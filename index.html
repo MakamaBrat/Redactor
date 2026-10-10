@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>mygame editor</title>
+<style>
+:root{--bg:#282828;--panel:#383838;--line:#171717;--hi:#2c5d87;--tx:#d2d2d2;--dim:#8a8a8a}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);font:12px "Segoe UI",system-ui,sans-serif;overflow:hidden;user-select:none}
+body{display:grid;grid-template:34px 1fr 210px/230px 1fr 250px;grid-template-areas:"bar bar bar" "hier scene insp" "proj proj proj"}
+#bar{grid-area:bar;background:#454545;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 8px}
+#bar .sp{flex:1}#pname{color:var(--dim)}
+button,input[type=text],input[type=number]{font:inherit;color:var(--tx);background:#515151;border:1px solid #2a2a2a;border-radius:3px;padding:3px 8px}
+button:hover{background:#5d5d5d}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:1px solid #6aa7de}
+.pn{background:var(--panel);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.pn>h4{margin:0;padding:5px 8px;font-weight:600;background:#2f2f2f;border-bottom:1px solid var(--line)}
+.pn>.bd{flex:1;overflow:auto;min-height:0}
+#hier{grid-area:hier}#insp{grid-area:insp}#proj{grid-area:proj}
+#scenep{grid-area:scene;position:relative;background:#111;border:1px solid var(--line);min-width:0;min-height:0}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+#hud{position:absolute;left:8px;bottom:6px;color:#aaa;font:11px monospace;pointer-events:none}
+#toast{position:absolute;right:10px;top:8px;background:#222;border:1px solid #555;padding:5px 10px;border-radius:3px;display:none;z-index:5}
+.cover{position:absolute;inset:0;background:#1e1e1e;z-index:4;display:none}
+#start{display:flex;flex-direction:column;gap:10px;align-items:center;justify-content:center;text-align:center;padding:24px;background:#1b1b1b;color:#bbb;line-height:1.5}
+#start button{font-size:14px;padding:8px 18px;background:#2c5d87}#start small{color:var(--dim);max-width:420px}
+#err{padding:24px;color:#f88;font:13px monospace;white-space:pre-wrap}
+#ed{flex-direction:column}#ed .eb{display:flex;gap:8px;align-items:center;padding:6px 8px;background:#2f2f2f;border-bottom:1px solid var(--line)}
+#ed .eb b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ed textarea{flex:1;background:#1e1e1e;color:#ddd;border:0;padding:10px;font:12px/1.5 Consolas,monospace;resize:none;tab-size:2;white-space:pre;user-select:text}
+#ed .im{flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;background:repeating-conic-gradient(#222 0 25%,#2a2a2a 0 50%) 0 0/16px 16px}
+#ed .im img{image-rendering:pixelated;max-width:none}
+.row{padding:3px 8px;display:flex;gap:6px;align-items:center;cursor:default;white-space:nowrap}
+.row:hover{background:#444}.row.sel{background:var(--hi);color:#fff}
+.row i{font-style:normal;opacity:.8}.row .k{margin-left:auto;color:var(--dim)}
+.root{font-weight:600;padding:4px 8px;color:#fff}
+.f{display:grid;grid-template-columns:78px 1fr;gap:6px;padding:3px 8px;align-items:center}
+.f label{color:var(--dim)}.f input{width:100%}.note{padding:6px 8px;color:var(--dim);line-height:1.45;user-select:text}
+#pbody{display:flex;flex:1;min-height:0}
+#tree{width:200px;border-right:1px solid var(--line);background:#323232;overflow:auto}
+#grid{flex:1;padding:8px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;overflow:auto}
+.it{width:84px;text-align:center;padding:4px;border:1px solid transparent;border-radius:3px;cursor:default}
+.it:hover{background:#444}.it .ic{height:48px;font-size:34px;line-height:48px}
+.it canvas{width:64px;height:64px;background:#2a2a2a;border:1px solid #222;image-rendering:pixelated;display:block;margin:0 auto 3px}
+.it span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it.map canvas{width:76px;height:50px}
+.empty{color:var(--dim);padding:10px 8px}
+.docs{max-width:900px;user-select:text}.docs h5{margin:12px 0 4px;font-size:13px;color:#fff}.docs p{margin:0;white-space:pre-wrap;line-height:1.5;color:#c8c8c8}
+.leg{display:flex;gap:8px;align-items:center;margin:3px 0}.leg b{width:16px;height:16px;border:1px solid #666;display:inline-block}
+</style></head><body>
+<div id="bar">
+ <button id="openp">📂 Открыть проект</button><span id="pname">проект не выбран</span>
+ <button id="save">💾 Сохранить сцену</button>
+ <label><input id="col" type="checkbox"> Коллизии</label>
+ <label><input id="anm" type="checkbox"> Анимация</label>
+ <span class="sp"></span><span id="zl">200%</span>
+ <input id="dirin" type="file" webkitdirectory hidden>
+</div>
+<div id="hier" class="pn"><h4>Hierarchy</h4><div class="bd" id="hl"></div></div>
+<div id="scenep"><canvas id="cv"></canvas><div id="hud"></div><div id="toast"></div>
+ <div id="ed" class="cover"></div><div id="err" class="cover"></div>
+ <div id="start" class="cover" style="display:flex"><h2 style="margin:0;color:#fff">mygame editor</h2><button id="openp2">📂 Открыть проект</button>
+  <small>Выберите папку игры (ту, где лежит <code>assets/</code>). Ресурсы и файлы подгрузятся из неё. Пояснения ко всему — внизу, вкладка Meta.</small></div>
+</div>
+<div id="insp" class="pn"><h4>Inspector</h4><div class="bd" id="il"></div></div>
+<div id="proj" class="pn"><h4>Project</h4><div id="pbody"><div id="tree"></div><div id="grid"></div></div></div>
+<script type="module" src="js/editor.js"></script>
+</body></html>
