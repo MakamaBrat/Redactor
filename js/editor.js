@@ -3,7 +3,7 @@
 const $ = id => document.getElementById(id);
 const FS = { base: '', files: new Map(), root: null, name: '' };
 const SKIP = new Set(['node_modules', '.git', 'dist', '.vercel']);
-const S = { map: null, tag: '', maps: [], objs: [], sel: null, cam: { x: 0, y: 0 }, zoom: 2, tab: 'Meta', cwd: '', open: new Set([0]), n: 0, D: new Map(), loop: false };
+const S = { map: null, tag: '', maps: [], objs: [], sel: null, cam: { x: 0, y: 0 }, zoom: 2, ptab: 'proj', sprIds: [], tab: 'Meta', cwd: '', open: new Set([0]), n: 0, D: new Map(), loop: false };
 let meta = null, defaultMeta = null;
 const P = rel => FS.base + rel;
 const toast = (m, bad) => { const t = $('toast'); t.textContent = m; t.style.display = 'block'; t.style.color = bad ? '#f99' : '#ddd'; clearTimeout(toast.h); toast.h = setTimeout(() => (t.style.display = 'none'), 3500); };
@@ -32,11 +32,11 @@ function buildDirs() {
 }
 
 // ---------- engine pieces (own copies, so the editor needs no game files) ----------
-const TICK = 50, sprCache = {}, pending = {};
+const TICK = 50, sprCache = {}, pending = {}, infoCache = {}; // infoCache: one sprite.json object per sprite, shared by all palettes
 async function loadSprite(id, pal = 0) {
   const k = id + '#' + pal; if (sprCache[k]) return sprCache[k];
   const base = P(meta.paths.sprites + '/' + id), dir = pal ? 'frames_pal' + pal : 'frames';
-  const info = JSON.parse(await readText(base + '/sprite.json'));
+  const info = (infoCache[id] ||= JSON.parse(await readText(base + '/sprite.json')));
   const frames = await Promise.all(info.frames.map(f => loadImg(base + '/' + dir + '/f' + String(f.i).padStart(3, '0') + '.png')));
   return (sprCache[k] = { id, info, frames });
 }
@@ -56,7 +56,7 @@ async function pickProject() {
 $('dirin').onchange = async e => { FS.root = null; FS.files = new Map(); FS.name = e.target.files[0]?.webkitRelativePath.split('/')[0] || ''; for (const f of e.target.files) { const p = f.webkitRelativePath.split('/').slice(1).join('/'); if (!p.split('/').some(s => SKIP.has(s))) FS.files.set(p, { f }); } await afterOpen(); e.target.value = ''; };
 function detectBase() { for (const k of FS.files.keys()) { const i = k.indexOf(meta.paths.maps + '/'); if (i >= 0 && k.endsWith('.json')) { FS.base = k.slice(0, i); return true; } } FS.base = ''; return false; }
 async function afterOpen() {
-  for (const o of [sprCache, pending]) for (const k in o) delete o[k];
+  for (const o of [sprCache, pending, infoCache]) for (const k in o) delete o[k];
   urls.forEach(u => URL.revokeObjectURL(u)); urls.clear(); meta = defaultMeta;
   if (!detectBase()) return showErr('В выбранной папке не найден ' + meta.paths.maps + '/*.json.\nВыберите папку проекта (ту, где лежит assets/).');
   if (FS.files.has(P('editor.meta.json'))) { try { meta = JSON.parse(await readText(P('editor.meta.json'))); toast('Метафайл взят из проекта'); } catch (e) { toast('editor.meta.json в проекте битый — использую встроенный', true); } }
@@ -64,6 +64,7 @@ async function afterOpen() {
   const md = P(meta.paths.maps + '/'); S.maps = [...FS.files.keys()].filter(k => k.startsWith(md) && k.endsWith('.json') && !k.slice(md.length).includes('/')).map(k => k.slice(md.length, -5)).filter(t => FS.files.has(md + t + '_full.png'));
   if (!S.maps.length) return showErr('Карты не найдены: нужны пары <tag>.json + <tag>_full.png в ' + md);
   $('pname').textContent = FS.name + (FS.base ? ' / ' + FS.base : '') + (FS.root ? '' : ' (только чтение)');
+  const sd = P(meta.paths.sprites + '/'); S.sprIds = [...new Set([...FS.files.keys()].filter(k => k.startsWith(sd) && k.endsWith('/sprite.json')).map(k => k.slice(sd.length).split('/')[0]))].sort(); A.id = ''; fillSprSelect();
   $('start').style.display = 'none';
   try { await setMap(S.maps[0], false); } catch (e) { return showErr('Не удалось загрузить карту: ' + e.message); }
   renderAll(); if (!S.loop) { S.loop = true; frame(); }
@@ -104,9 +105,9 @@ function renderInsp() {
   const L = { x: 'Position X', y: 'Position Y', anim: 'Animation', pal: 'Palette', flip: 'Flip (0-3)' };
   b.innerHTML = '<div class="root">' + o.kind + ' · ' + o.spr + '</div><div class="f"><label>Name</label><input type="text" data-p="name" value="' + o.name.replace(/"/g, '&quot;') + '"></div>' +
     Object.keys(L).map(k => '<div class="f"><label>' + L[k] + '</label><input type="number" data-p="' + k + '" value="' + o[k] + '"></div>').join('') +
-    '<div class="f"><label></label><button id="del">Удалить (Del)</button></div><div class="note">' + (prefab(o)?.doc || '') + '</div>';
+    '<div class="f"><label></label><button id="del">Удалить (Del)</button></div><div class="f"><label></label><button id="oan">Открыть в аниматоре</button></div><div class="note">' + (prefab(o)?.doc || '') + '</div>';
   b.querySelectorAll('input').forEach(i => i.oninput = () => { o[i.dataset.p] = i.type === 'number' ? +i.value || 0 : i.value; if (i.dataset.p === 'pal') getSpr(o.spr, o.pal); if (i.dataset.p === 'name') renderHier(); });
-  $('del').onclick = del;
+  $('del').onclick = del; $('oan').onclick = () => openAnimator(o.spr, o.pal, o.anim);
 }
 function del() { if (!S.sel) return; S.objs = S.objs.filter(o => o !== S.sel); select(null); }
 const base = p => p.replace(/\/$/, '').split('/').at(-1);
@@ -200,6 +201,7 @@ cv.addEventListener('dragover', e => e.preventDefault());
 cv.addEventListener('drop', e => { e.preventDefault(); const p = meta.prefabs[+e.dataTransfer.getData('text/plain')]; if (p) { const w = world(e.offsetX, e.offsetY); add(p, w.x, w.y); } });
 addEventListener('keydown', e => {
   if (['INPUT', 'TEXTAREA'].includes(e.target.tagName) || !S.map) return;
+  if (S.ptab === 'anim' && A.focus) return animKey(e);
   if (e.key === 'Delete' || e.key === 'Backspace') del();
   if ((e.ctrlKey || e.metaKey) && e.key === 'd' && S.sel) { e.preventDefault(); const s = S.sel, o = add(prefab(s) || s, s.x + 12, s.y + 12); Object.assign(o, { anim: s.anim, pal: s.pal, flip: s.flip, name: s.name.replace(/ \(\d+\)$/, '') + ' (' + o.id + ')' }); renderHier(); renderInsp(); }
   if (S.sel && e.key.startsWith('Arrow')) { e.preventDefault(); const d = e.shiftKey ? 10 : 1; S.sel.x += e.key === 'ArrowRight' ? d : e.key === 'ArrowLeft' ? -d : 0; S.sel.y += e.key === 'ArrowDown' ? d : e.key === 'ArrowUp' ? -d : 0; renderInsp(); }
@@ -207,6 +209,105 @@ addEventListener('keydown', e => {
 $('openp').onclick = $('openp2').onclick = pickProject;
 $('save').onclick = async () => { if (!S.map) return toast('Сначала откройте проект', true); try { toast(await writeFile(P(meta.paths.scenes + '/' + S.tag + '.scene.json'), JSON.stringify({ map: S.tag, objects: S.objs }, null, 1))); } catch (e) { toast('Не сохранено: ' + e.message, true); } };
 
+
+// ---------- animator: keyframe editor for sprite.json animations (entry = {frame, time, dx, dy, flip}; time in 50 ms ticks) ----------
+const A = { id: '', pal: 0, idx: 0, sel: 0, spr: null, playing: false, t: 0, dirty: false, undo: [], focus: false, K: 6, cur: -1, pk: [] };
+const clip = () => A.spr?.info.animations[A.idx];
+const dur = e => Math.max(1, e.time) * TICK;
+const total = () => (clip() || []).reduce((s, e) => s + dur(e), 0);
+const keyStart = i => (clip() || []).slice(0, i).reduce((s, e) => s + dur(e), 0);
+function keyAt(t) { const c = clip() || []; let a = 0; for (let i = 0; i < c.length; i++) { if (t < a + dur(c[i])) return i; a += dur(c[i]); } return Math.max(0, c.length - 1); }
+const layout = () => { let x = 0; return (clip() || []).map(e => { const w = Math.max(34, e.time * A.K), r = { x, w }; x += w; return r; }); };
+function timeToX(t) { const c = clip() || [], L = layout(); let a = 0; for (let i = 0; i < c.length; i++) { const d = dur(c[i]); if (t < a + d || i === c.length - 1) return L[i].x + Math.min(1, (t - a) / d) * L[i].w; a += d; } return 0; }
+function xToTime(x) { const c = clip() || [], L = layout(); let a = 0; for (let i = 0; i < c.length; i++) { const d = dur(c[i]); if (x < L[i].x + L[i].w || i === c.length - 1) return a + Math.max(0, Math.min(1, (x - L[i].x) / L[i].w)) * d; a += d; } return 0; }
+function thumb(c, spr, f) { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); const im = spr.frames[f], m = spr.info.frames[f]; if (!im || !m) return; const k = Math.min(1, (c.width - 2) / Math.max(im.width, im.height)); g.imageSmoothingEnabled = false; g.drawImage(im, (c.width - im.width * k) / 2, (c.height - im.height * k) / 2, im.width * k, im.height * k); }
+function fillSprSelect() { $('asp').innerHTML = S.sprIds.map(i => '<option>' + i + '</option>').join(''); }
+function setPTab(t) { S.ptab = t; $('pbody').style.display = t === 'proj' ? 'flex' : 'none'; $('anim').style.display = t === 'anim' ? 'flex' : 'none'; document.querySelectorAll('#ptabs .tb').forEach(b => b.classList.toggle('on', b.dataset.p === t)); if (t === 'anim' && !A.id && S.sprIds.length) openAnimator(S.sprIds[0], 0, 0); }
+async function openAnimator(id, pal = 0, idx = 0) {
+  if (!FS.files.size) return toast('Сначала откройте проект', true);
+  setPTab('anim');
+  try { A.spr = await loadSprite(id, pal | 0); } catch (e) { return toast('Не удалось загрузить спрайт ' + id + ': ' + e.message, true); }
+  Object.assign(A, { id, pal: pal | 0, idx: Math.max(0, Math.min(idx | 0, A.spr.info.animations.length - 1)), sel: 0, t: 0, playing: false, undo: [], dirty: false });
+  $('asp').value = id; $('apal').innerHTML = Array.from({ length: Math.max(1, (A.spr.info.palettes?.length) || 1) }, (_, i) => '<option value="' + i + '">палитра ' + i + '</option>').join(''); $('apal').value = A.pal;
+  $('aplay').textContent = '▶'; $('adirty').textContent = '';
+  buildPicker(); renderTL(); renderKey();
+}
+function buildPicker() {
+  const p = $('apick'); p.innerHTML = ''; A.pk = [];
+  A.spr.frames.forEach((im, f) => { const c = document.createElement('canvas'); c.width = c.height = 36; c.title = 'frame ' + f; thumb(c, A.spr, f); c.onclick = () => { const e = (clip() || [])[A.sel]; if (!e) return; snap(); e.frame = f; touch(); }; p.appendChild(c); A.pk.push(c); });
+}
+function snap() { A.undo.push({ idx: A.idx, j: JSON.stringify(clip()) }); if (A.undo.length > 80) A.undo.shift(); }
+function touch() { A.dirty = true; $('adirty').textContent = '● не сохранено'; renderTL(); renderKey(); }
+function undo() { const u = A.undo.pop(); if (!u) return toast('Нечего отменять'); A.idx = u.idx; A.spr.info.animations[A.idx] = JSON.parse(u.j); A.sel = Math.min(A.sel, Math.max(0, clip().length - 1)); touch(); }
+function renderTL() {
+  const c = clip() || [], L = layout(), W = L.length ? L.at(-1).x + L.at(-1).w + 60 : 200;
+  $('acnt').textContent = 'из ' + A.spr.info.animations.length + ' · ' + c.length + ' ключей · ' + (total() / 1000).toFixed(2) + ' с'; $('aidx').value = A.idx;
+  for (let r = 0; r < 4; r++) { const l = $('lr' + r); l.innerHTML = ''; l.style.width = W + 'px'; }
+  let tick = 0;
+  c.forEach((e, i) => {
+    const { x, w } = L[i], sel = i === A.sel ? ' sel' : '';
+    const t = document.createElement('div'); t.className = 'tk'; t.style.left = x + 'px'; t.textContent = tick * TICK + ' мс'; $('lr0').appendChild(t); tick += Math.max(1, e.time);
+    const b = document.createElement('div'); b.className = 'kb' + sel; b.style.left = x + 1 + 'px'; b.style.width = w - 2 + 'px'; b.dataset.i = i;
+    const cv2 = document.createElement('canvas'); cv2.width = cv2.height = 32; thumb(cv2, A.spr, e.frame); b.appendChild(cv2);
+    const sm = document.createElement('small'); sm.innerHTML = '#' + e.frame + '<br>' + e.time + ' т'; b.appendChild(sm);
+    const rz = document.createElement('div'); rz.className = 'rz'; rz.title = 'Тяни — длительность'; b.appendChild(rz);
+    b.onpointerdown = ev => { if (ev.target === rz) return resizeStart(ev, i); A.sel = i; A.playing = false; $('aplay').textContent = '▶'; A.t = keyStart(i); renderTL(); renderKey(); };
+    $('lr1').appendChild(b);
+    const dm = document.createElement('div'); dm.className = 'dm' + sel + (e.dx || e.dy ? '' : ' off'); dm.style.left = x + 1 + 'px'; dm.style.maxWidth = w - 2 + 'px'; dm.textContent = '◆ ' + (e.dx || 0) + ',' + (e.dy || 0); dm.onpointerdown = () => b.onpointerdown({ target: null }); $('lr2').appendChild(dm);
+    const fl = document.createElement('div'); fl.className = 'dm' + sel + (e.flip ? '' : ' off'); fl.style.left = x + 1 + 'px'; fl.style.maxWidth = w - 2 + 'px'; fl.textContent = '◆ ' + (e.flip || 0); fl.onpointerdown = () => b.onpointerdown({ target: null }); $('lr3').appendChild(fl);
+  });
+  if (!c.length) $('lr1').innerHTML = '<div class="empty">Пустой клип — нажмите «+ Key»</div>';
+  $('tin').style.width = W + 64 + 'px'; A.cur = -1; updatePlay();
+}
+function resizeStart(ev, i) {
+  ev.preventDefault(); const e = clip()[i]; snap(); const x0 = ev.clientX, t0 = e.time; A.sel = i;
+  const mv = m => { e.time = Math.max(1, Math.round(t0 + (m.clientX - x0) / A.K)); A.dirty = true; $('adirty').textContent = '● не сохранено'; renderTL(); renderKey(); };
+  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); }; addEventListener('pointermove', mv); addEventListener('pointerup', up);
+}
+function renderKey() {
+  const e = (clip() || [])[A.sel]; const ids = ['akf', 'akt', 'akx', 'aky', 'akfl'], ks = ['frame', 'time', 'dx', 'dy', 'flip'];
+  ids.forEach((id, n) => { const el = $(id); el.disabled = !e; if (e && document.activeElement !== el) el.value = e[ks[n]] ?? 0; });
+  A.pk.forEach((c, f) => c.classList.toggle('on', !!e && e.frame === f));
+}
+function updatePlay() {
+  if (!A.spr) return; const i = keyAt(A.t);
+  $('ph').style.left = 64 + timeToX(A.t) + 'px';
+  if (i !== A.cur) { A.cur = i; document.querySelectorAll('#lr1 .kb').forEach(b => b.classList.toggle('cur', +b.dataset.i === i)); if (A.playing && A.sel !== i) { A.sel = i; renderTL(); renderKey(); } }
+  const c = $('apc'), g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); if (A.spr.bad) return;
+  g.save(); g.translate(80, 100); g.scale(3, 3); g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 1 / 3; g.beginPath(); g.moveTo(-40, 0); g.lineTo(40, 0); g.moveTo(0, -40); g.lineTo(0, 10); g.stroke();
+  const e = (clip() || [])[i]; if (e) drawFrame(g, A.spr, e.frame, e.dx || 0, e.dy || 0, e.flip || 0); g.restore();
+}
+function animKey(e) {
+  const c = clip() || [];
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); $('asave').click(); }
+  else if (e.key === ' ') { e.preventDefault(); $('aplay').click(); }
+  else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); $('akdel').click(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { e.preventDefault(); A.sel = Math.max(0, Math.min(c.length - 1, A.sel + (e.key === 'ArrowRight' ? 1 : -1))); A.t = keyStart(A.sel); A.playing = false; renderTL(); renderKey(); }
+}
+function initAnim() {
+  document.querySelectorAll('#ptabs .tb').forEach(b => b.onclick = () => setPTab(b.dataset.p));
+  addEventListener('pointerdown', e => { A.focus = !!e.target.closest('#anim'); }, true);
+  $('asp').onchange = () => openAnimator($('asp').value, 0, 0); $('apal').onchange = () => openAnimator(A.id, +$('apal').value, A.idx);
+  const go = n => { if (!A.spr) return; const N = A.spr.info.animations.length; A.idx = Math.max(0, Math.min(N - 1, n | 0)); A.sel = 0; A.t = 0; A.playing = false; $('aplay').textContent = '▶'; renderTL(); renderKey(); };
+  $('aprev').onclick = () => go(A.idx - 1); $('anext').onclick = () => go(A.idx + 1); $('aidx').onchange = () => go(+$('aidx').value);
+  $('aplay').onclick = () => { if (!A.spr) return; A.playing = !A.playing; $('aplay').textContent = A.playing ? '⏸' : '▶'; if (A.playing && A.t >= total()) A.t = 0; };
+  $('azm').oninput = () => { A.K = +$('azm').value; renderTL(); };
+  $('akadd').onclick = () => { if (!A.spr) return; snap(); const c = clip(), src = c[A.sel] || { frame: 0, time: 2, dx: 0, dy: 0, flip: 0 }; c.splice(c.length ? A.sel + 1 : 0, 0, { ...src }); A.sel = c.length > 1 ? A.sel + 1 : 0; touch(); };
+  $('akdel').onclick = () => { const c = clip(); if (!c || !c.length) return; snap(); c.splice(A.sel, 1); A.sel = Math.max(0, Math.min(A.sel, c.length - 1)); touch(); };
+  const mv = d => { const c = clip(), j = A.sel + d; if (!c || j < 0 || j >= c.length) return; snap(); [c[A.sel], c[j]] = [c[j], c[A.sel]]; A.sel = j; touch(); };
+  $('akl').onclick = () => mv(-1); $('akr').onclick = () => mv(1);
+  $('aclone').onclick = () => { if (!A.spr) return; const an = A.spr.info.animations; an.push(JSON.parse(JSON.stringify(clip() || []))); A.idx = an.length - 1; A.sel = 0; A.dirty = true; $('adirty').textContent = '● не сохранено'; toast('Клон добавлен в конец: клип ' + A.idx); renderTL(); renderKey(); };
+  $('anew').onclick = () => { if (!A.spr) return; const an = A.spr.info.animations; an.push([{ frame: 0, time: 2, dx: 0, dy: 0, flip: 0 }]); A.idx = an.length - 1; A.sel = 0; A.dirty = true; $('adirty').textContent = '● не сохранено'; toast('Новый клип: ' + A.idx); renderTL(); renderKey(); };
+  $('aundo').onclick = undo;
+  [['akf', 'frame'], ['akt', 'time'], ['akx', 'dx'], ['aky', 'dy'], ['akfl', 'flip']].forEach(([id, k]) => { const el = $(id); el.onfocus = () => snap(); el.oninput = () => { const e = (clip() || [])[A.sel]; if (!e) return; let v = +el.value || 0; if (k === 'time') v = Math.max(1, v); if (k === 'flip') v = Math.max(0, Math.min(3, v)); e[k] = v; A.dirty = true; $('adirty').textContent = '● не сохранено'; renderTL(); A.pk.forEach((c, f) => c.classList.toggle('on', e.frame === f)); }; });
+  $('asave').onclick = async () => { if (!A.spr) return; try { toast(await writeFile(P(meta.paths.sprites + '/' + A.id + '/sprite.json'), JSON.stringify(A.spr.info))); A.dirty = false; $('adirty').textContent = ''; } catch (e) { toast('Не сохранено: ' + e.message, true); } };
+  const scrub = ev => { const r = $('lr0').getBoundingClientRect(); A.t = xToTime(ev.clientX - r.left); A.playing = false; $('aplay').textContent = '▶'; };
+  $('lr0').onpointerdown = ev => { scrub(ev); const m = scrub, up = () => { removeEventListener('pointermove', m); removeEventListener('pointerup', up); }; addEventListener('pointermove', m); addEventListener('pointerup', up); };
+  let last = 0; (function loop(ts) { requestAnimationFrame(loop); const dt = Math.min(100, ts - last); last = ts; if (S.ptab !== 'anim' || !A.spr) return; if (A.playing) { const tt = total(); A.t += dt * $('aspd').value; if (tt && A.t >= tt) { if ($('aloop').checked) A.t %= tt; else { A.t = Math.max(0, tt - 1); A.playing = false; $('aplay').textContent = '▶'; } } } updatePlay(); })(0);
+}
+
+initAnim();
 // ---------- boot: built-in metafile first, so docs are readable before any project is opened ----------
 fetch('editor.meta.json').then(r => r.json()).then(m => { meta = defaultMeta = m; renderTree(); renderGrid(); renderInsp(); })
   .catch(e => showErr('Не удалось загрузить editor.meta.json рядом с index.html: ' + e.message));
