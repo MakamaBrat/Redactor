@@ -1,0 +1,317 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Unity-style 2D Editor</title>
+<style>
+:root{--bg:#383838;--p:#2d2d2d;--b:#1a1a1a;--t:#ddd;--a:#2c5d87;--i:#515151;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--t);font:12px "Segoe UI",system-ui,sans-serif;overflow:hidden;user-select:none}
+body{display:flex;flex-direction:column}
+#app{--lw:235px;--rw:290px;--bh:170px;display:grid;flex:1;min-height:0;grid-template-columns:var(--lw) 5px minmax(80px,1fr) 5px var(--rw);grid-template-rows:minmax(80px,1fr) 5px var(--bh)}
+#p1{grid-area:1/1}#sv{grid-area:1/3}#p3{grid-area:1/5}#proj{grid-area:3/1/4/6}
+.sp{background:#1a1a1a;z-index:2}.sp:hover,.sp.d{background:var(--a)}.sp.v{cursor:col-resize}.sp.h{cursor:row-resize}
+.pn{background:var(--p);border:1px solid var(--b);display:flex;flex-direction:column;min-height:0;min-width:0}
+.ph{background:#3c3c3c;padding:4px 8px;border-bottom:1px solid var(--b);display:flex;justify-content:space-between;align-items:center}
+.pb{flex:1;overflow:auto;min-height:0;position:relative}
+
+.it{padding:3px 10px;cursor:default}.it:hover{background:#3a3a3a}.it.s{background:var(--a)}
+#cv{width:100%;height:100%;display:block}
+.sec{border-bottom:1px solid var(--b);padding:6px 8px}.sh{font-weight:600;margin-bottom:6px;display:flex;justify-content:space-between}
+.r{display:flex;align-items:center;gap:4px;margin:3px 0}.l{width:80px;flex:none}
+.f{display:flex;flex:1;align-items:center;background:var(--i);border-radius:2px;min-width:0}
+.f i{font-style:normal;padding:2px 6px;cursor:ew-resize;color:#aaa}
+input[type=number],input[type=text]{background:#2a2a2a;color:var(--t);border:1px solid #111;border-radius:2px;padding:2px 4px;width:100%;box-sizing:border-box;min-width:0}
+.f input{background:transparent;border:0}
+input[type=range]{flex:1}input[type=color]{width:60px;height:20px;border:0;padding:0;background:none}
+.slot{flex:1;background:#2a2a2a;border:1px solid #111;padding:2px 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot.o{outline:1px solid #5aa0e0}
+button{background:#585858;color:var(--t);border:1px solid #111;border-radius:3px;padding:3px 10px;cursor:pointer}button:hover{background:#666}
+#menu{position:fixed;background:#2b2b2b;border:1px solid #111;box-shadow:0 4px 12px #000a;padding:2px 0;display:none;z-index:9;min-width:150px}
+#menu div{padding:4px 18px}#menu div:hover{background:var(--a)}
+.e{padding:12px;color:#888}
+#ac{width:100%;height:100%;display:block}
+#ap{position:absolute;left:8px;top:8px;width:230px;background:#2d2df0;background:#2d2d2dee;border:1px solid #111;padding:6px}
+.tb{background:#3c3c3c;border:0;border-bottom:2px solid transparent;border-radius:0;padding:2px 10px}.tb.on{border-bottom-color:var(--a);background:#4a4a4a}
+select{background:#2a2a2a;color:var(--t);border:1px solid #111;max-width:95px}
+</style><link rel="stylesheet" href="project.css"></head><body>
+<div id="mbar"><button class="mb" data-m="file">File</button><button class="mb" data-m="edit">Edit</button><span class="mgrow"></span><span id="pname" title="Папка проекта"></span><button id="msave" title="Сохранить всё (Ctrl+S)">💾 Save</button></div>
+<div id="app">
+<div class="pn" id="p1"><div class="ph">Hierarchy</div><div class="pb" id="hier"></div></div>
+<div class="pn" id="sv"><div class="ph"><span><button class="tb on" data-tab="scene">Scene</button> <button class="tb" data-tab="anim">Animator</button> <button class="tb" data-tab="clip">Animation</button> <button id="play-btn" title="Play / Stop (Ctrl+P)">▶ Play</button><button id="pause-btn" title="Пауза / продолжить" disabled>⏸</button></span><span id="hint" style="color:#999">ПКМ — создать · колесо — зум · СКМ/Alt — пан · Shift при масштабе — пропорции</span></div><div class="pb" id="scn"><canvas id="cv"></canvas></div><div class="pb" id="ant" style="display:none"><canvas id="ac"></canvas><div id="ap"></div><div id="apw"><div class="apt">Preview · колесо — зум, ЛКМ — пан</div><canvas id="apv"></canvas></div></div>
+<div class="sp h" id="s5" style="display:none"></div>
+<div id="anm" style="display:none">
+<div id="tl-bar">
+<div class="grp"><span class="bi" title="Анимация (клип)">▤</span><select id="tl-sel" title="Анимация (клип)"></select><input type="text" id="tl-name" placeholder="Имя клипа" title="Имя клипа"></div>
+<div class="grp"><button id="tl-first" class="ib" title="В начало (время 0)">⏮</button><button id="tl-pk" class="ib" title="К предыдущему ключу">◂◆</button><button id="tl-pl" class="ib" title="Проиграть / остановить (Space)">▶</button><button id="tl-nk" class="ib" title="К следующему ключу">◆▸</button><button id="tl-last" class="ib" title="В конец (последний ключ)">⏭</button></div>
+<div class="grp"><button id="tl-rec" title="Режим записи: изменения в Inspector и на сцене автоматически ставят ключи">● Rec</button><button id="tl-key" title="Поставить ключи в текущем кадре (для выбранных строк / объекта / всех)">◆ Key</button><button id="tl-add" title="Добавить свойство выбранного объекта">＋ Property ▾</button><button id="tl-del" class="ib" title="Удалить выделенные ключи (Del)">⌫</button></div>
+<div class="grp"><label title="Текущее время, секунды">⏱ <input type="number" id="tl-t" step="0.01" min="0"></label><span id="tl-f"></span></div>
+<div class="grp"><span class="lb" title="Длина клипа = время последнего ключа (считается автоматически)">↔ Длина</span><b id="tl-len">—</b><label title="Кадров в секунду">FPS <input type="number" id="tl-fps" step="1" min="1" max="240"></label><label title="Зациклить анимацию"><input type="checkbox" id="tl-loop"> ↻ Loop</label><label title="Сколько кадров между соседними спрайтами при перетаскивании из Project на таймлайн">▣ Шаг <input type="number" id="tr-step" step="1" min="1" max="240" value="1"></label></div>
+<span class="grow"></span>
+<div class="grp"><button id="tl-fit" class="ib" title="Вписать клип в окно">⤢</button><button id="tl-max" class="ib" title="Развернуть / свернуть окно анимации">⛶</button></div>
+</div>
+<div id="tl-body"><div id="tl-lw"><div id="tl-lh">☰ Properties</div><div id="tl-lc"><div id="tl-list"></div></div></div>
+<div id="tl-cv"><canvas id="tlc"></canvas><div id="tl-empty"><div>Нет анимаций</div><div class="sub">Список анимаций слева вверху → «＋ Create New Clip…»</div></div></div></div>
+</div></div>
+<div class="pn" id="p3"><div class="ph">Inspector</div><div class="pb" id="ins"></div></div>
+<div class="sp v" id="s1" style="grid-area:1/2"></div><div class="sp v" id="s2" style="grid-area:1/4"></div><div class="sp h" id="s3" style="grid-area:2/1/3/6"></div>
+<div class="pn" id="proj"><div class="ph"><b>Project</b><span class="ptools"><input type="text" id="psearch" placeholder="Поиск…"><input type="range" id="pzoom" min="40" max="128" value="64" title="Размер иконок"><button id="pnew">+ Create ▾</button><button id="imp">Import…</button></span></div>
+<div id="pbody"><div id="ptree"></div><div class="sp v" id="s4"></div><div id="pmain"><div id="pcrumb"></div><div id="pgrid"></div></div></div></div>
+</div>
+<div id="hub" style="display:none"></div><div id="dlg" style="display:none"></div><div id="toast"></div>
+<div id="menu"></div><input type="file" id="file" accept="image/*,.otf,.ttf,.woff,.woff2" multiple hidden>
+<script>
+const $=s=>document.querySelector(s),PPU=100,TAU=Math.PI/180,imgCache=new Map();   // imgCache: url -> Image/Canvas (нужен для Undo и загрузки проекта)
+let objs=[],assets=[],sel=null,nid=1,aid=1,cam={x:0,y:0,z:100},pan=null,drag=null,tc={};
+const cv=$('#cv'),g=cv.getContext('2d'),menu=$('#menu'),ins=$('#ins');
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// get(): Map id -> {объект, индекс}; сам проверяет актуальность (objs часто пересоздаётся/фильтруется), O(1) вместо O(n)
+let gmap=null,garr=null,glen=-1;
+const gbuild=()=>{gmap=new Map();garr=objs;glen=objs.length;for(let i=0;i<objs.length;i++)gmap.set(objs[i].id,i)};
+const get=id=>{if(id==null)return undefined;if(garr!==objs||glen!==objs.length)gbuild();
+  let i=gmap.get(+id);if(i!==undefined&&objs[i]&&objs[i].id==id)return objs[i];
+  if(i===undefined&&gmap.size===objs.length){gbuild();i=gmap.get(+id);return i!==undefined?objs[i]:undefined}   // возможно, объект подменили при той же длине
+  gbuild();i=gmap.get(+id);return i!==undefined?objs[i]:undefined},ast=id=>assets.find(a=>a.id==id),isFont=id=>{const a=ast(id);return !!(a&&a.font)};
+const rd=v=>Math.round(v*1000)/1000;
+// доступ к анимируемым свойствам (x,y,r,sx,sy | color,alpha,sprite) и единая точка изменения (для Animation Rec)
+const gim=o=>o.img||o.text||o.grad;   // у Image и Text есть общие color / alpha
+const pget=(o,k)=>k=='sprite'?(o.img?o.img.sprite:undefined):k=='color'||k=='alpha'?(gim(o)?gim(o)[k]:undefined):(k=='rx'||k=='ry')?(o[k]||0):o[k];
+const pset=(o,k,v)=>{if(k=='sprite'){if(o.img)o.img.sprite=v}else if(k=='color'||k=='alpha'){if(gim(o))gim(o)[k]=v}else o[k]=v};
+function chg(o,k,v){const old=pget(o,k);pset(o,k,v);window.animEdit&&animEdit(o,k,old,v)}
+function mkAsset(name,url,folder){return new Promise(r=>{const img=new Image();img.onload=()=>{imgCache.set(url,img);const fo=folder==null?(window.curFolder?curFolder():0):folder;const a={id:aid++,name:window.uniqAsset?uniqAsset(name,fo):name,url,img,folder:fo,ppu:PPU,mode:'single',sprites:[]};assets.push(a);r(a)};img.src=url})}
+function gen(name,fn,folder){const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#fff';x.beginPath();fn(x);x.fill();return mkAsset(name,c.toDataURL(),folder)}
+// ---- menu
+function showMenu(x,y,items){menu.innerHTML='';items.forEach(([t,fn])=>{const d=document.createElement('div');d.textContent=t;d.onclick=()=>{menu.style.display='none';fn()};menu.append(d)});menu.style.display='block';menu.style.left=Math.min(x,innerWidth-170)+'px';menu.style.top=Math.min(y,innerHeight-items.length*26-10)+'px'}
+addEventListener('mousedown',e=>{if(!menu.contains(e.target))menu.style.display='none'},true);
+// ---- objects
+function add(name,w,img,parent,text,grad){const L=parent!=null?toLocal({parent},w.x,w.y):{x:w.x,y:w.y};
+  const o={id:nid++,name,x:rd(L.x),y:rd(L.y),r:0,rx:0,ry:0,sx:1,sy:1,img:img||null};if(text)o.text=text;if(grad)o.grad=grad;if(parent!=null){o.parent=parent;hcol.delete(parent)}
+  objs.push(o);sel=o.id;refresh();return o}
+const newImg=s=>({sprite:s||null,color:'#ffffff',alpha:1});
+function del(id){const gone=new Set(subtree(id).map(o=>o.id));objs=objs.filter(o=>!gone.has(o.id));if(gone.has(sel))sel=null;refresh()}
+function dup(id){const o=get(id);if(!o)return;const src=subtree(id).sort((a,b)=>objs.indexOf(a)-objs.indexOf(b)),map=new Map();
+  const cp=src.map(s=>{const c=JSON.parse(JSON.stringify(s));c.id=nid++;map.set(s.id,c.id);return c});
+  cp.forEach((c,i)=>{if(src[i].id==id){c.name=o.name+' (1)';c.x=rd(c.x+.3);c.y=rd(c.y-.3)}else c.parent=map.get(src[i].parent)});
+  objs.push(...cp);sel=map.get(id);refresh()}
+function size(o,im){if(o.screen)return[o.screen.w/PPU,o.screen.h/PPU];im=im||o.img;if(!o.img&&!o.text&&o.grad)return[Math.max(.01,o.grad.w),Math.max(.01,o.grad.h)];if(!o.img&&o.text)return[Math.max(.01,o.text.w),Math.max(.01,o.text.h)];const a=im&&im.sprite&&ast(im.sprite);return a&&a.img?[a.img.width/ppuOf(a),a.img.height/ppuOf(a)]:im?[1,1]:[.3,.3]}
+
+/* ---- иерархия: x,y,r,sx,sy — ЛОКАЛЬНЫЕ (относительно родителя), мировая матрица считается на лету ---- */
+// матрица [a,b,c,d,e,f]: X=a*x+c*y+e ; Y=b*x+d*y+f
+const locM=o=>{const c=Math.cos(o.r*TAU),s=Math.sin(o.r*TAU),rx=(o.rx||0)*TAU,ry=(o.ry||0)*TAU,cx=Math.cos(rx),cy=Math.cos(ry),k=Math.sin(rx)*Math.sin(ry);
+  // Rotation X/Y в 2D — проекция на плоскость сцены: колонки (cosY, sinX·sinY) и (0, cosX), затем поворот Z
+  return[c*cy*o.sx-s*k*o.sx,s*cy*o.sx+c*k*o.sx,-s*cx*o.sy,c*cx*o.sy,o.x,o.y]};
+const mulM=(P,L)=>[P[0]*L[0]+P[2]*L[1],P[1]*L[0]+P[3]*L[1],P[0]*L[2]+P[2]*L[3],P[1]*L[2]+P[3]*L[3],P[0]*L[4]+P[2]*L[5]+P[4],P[1]*L[4]+P[3]*L[5]+P[5]];
+const invM=M=>{const det=M[0]*M[3]-M[1]*M[2];if(Math.abs(det)<1e-12)return null;const a=M[3]/det,b=-M[1]/det,c=-M[2]/det,d=M[0]/det;return[a,b,c,d,-(a*M[4]+c*M[5]),-(b*M[4]+d*M[5])]};
+const apM=(M,x,y)=>({x:M[0]*x+M[2]*y+M[4],y:M[1]*x+M[3]*y+M[5]});
+function wmat(o,dep){dep=dep||0;const p=o.parent!=null&&dep<64?get(o.parent):null;return p?mulM(wmat(p,dep+1),locM(o)):locM(o)}
+const worldPos=o=>{const M=wmat(o);return{x:M[4],y:M[5]}};
+// мировая точка -> локальные координаты объекта o (по его родителю)
+function toLocal(o,wx,wy){const p=o.parent!=null?get(o.parent):null;if(!p)return{x:wx,y:wy};const I=invM(wmat(p));return I?apM(I,wx,wy):{x:wx,y:wy}}
+function decomp(M,rx,ry,fb){rx=(rx||0)*TAU;ry=(ry||0)*TAU;fb=fb||{};
+  const cx=Math.cos(rx),cy=Math.cos(ry),k=Math.sin(rx)*Math.sin(ry),ql=Math.hypot(cy,k),det=M[0]*M[3]-M[1]*M[2];
+  if(ql<1e-6)return{x:M[4],y:M[5],r:fb.r||0,sx:fb.sx==null?1:fb.sx,sy:fb.sy==null?1:fb.sy};
+  const sx=Math.hypot(M[0],M[1])/ql,r=(Math.atan2(M[1],M[0])-Math.atan2(k,cy))/TAU,d=sx*cy*cx;
+  return{x:M[4],y:M[5],r,sx,sy:Math.abs(d)>1e-9?det/d:Math.hypot(M[2],M[3])/Math.max(Math.abs(cx),1e-6)}}
+// порядок обхода (родитель, затем дети): [{o,d,on}] — on=false, если сам объект или любой родитель выключен
+function order(){const ch=new Map(),out=[],seen=new Set();
+  for(const o of objs){const p=o.parent!=null&&get(o.parent)?o.parent:null;let a=ch.get(p);if(!a)ch.set(p,a=[]);a.push(o)}
+  const walk=(o,d,act,PM)=>{if(seen.has(o.id))return;seen.add(o.id);const on=act&&o.active!==false,M=PM?mulM(PM,locM(o)):locM(o);out.push({o,d,on,M});const k=ch.get(o.id);if(k)for(const c of k)walk(c,d+1,on,M)};
+  const r=ch.get(null);if(r)for(const o of r)walk(o,0,true,null);return out}
+function subtree(id){const kids=new Map();for(const c of objs)if(c.parent!=null){let a=kids.get(c.parent);if(!a)kids.set(c.parent,a=[]);a.push(c.id)}
+  const r=[],st=[id],seen=new Set();while(st.length){const i=st.pop();if(seen.has(i))continue;seen.add(i);const o=get(i);if(!o)continue;r.push(o);const k=kids.get(i);if(k)for(const x of k)st.push(x)}return r}
+const canParent=(id,pid)=>pid==null||!subtree(id).some(o=>o.id==pid);
+// Create Empty Parent: пустой объект в позиции o, на том же месте среди соседей; o становится его дочерним (мировая трансформация o не меняется)
+function emptyParent(id){const o=get(id);if(!o)return null;
+  const g={id:nid++,name:'GameObject',x:o.x,y:o.y,r:0,rx:0,ry:0,sx:1,sy:1,img:null};
+  if(o.parent!=null)g.parent=o.parent;
+  objs.splice(objs.indexOf(o),0,g);reparent(o,g.id);hcol.delete(g.id);sel=g.id;refresh();return g}
+// Rename: имя объекта правится прямо в строке Hierarchy (Enter — применить, Esc — отмена)
+function renameObj(id){const o=get(id);if(!o)return;
+  for(let p=o.parent!=null?get(o.parent):null,g=0;p&&g<64;g++,p=p.parent!=null?get(p.parent):null)hcol.delete(p.id);   // раскрыть родителей, чтобы строка была видна
+  hier();const row=$('#hier').querySelector(`.it[data-id="${id}"]`);if(!row)return;
+  row.scrollIntoView({block:'nearest'});
+  const inp=document.createElement('input');inp.type='text';inp.className='rn';inp.value=o.name;
+  const tn=row.querySelector('.nm');row.draggable=false;if(tn)tn.replaceWith(inp);else row.appendChild(inp);
+  inp.focus();inp.select();let done=0;
+  const fin=ok=>{if(done)return;done=1;if(ok){const v=inp.value.trim();if(v&&v!=o.name)o.name=v}refresh()};
+  inp.onkeydown=e=>{e.stopPropagation();if(e.key=='Enter')fin(1);if(e.key=='Escape')fin(0)};
+  inp.onblur=()=>fin(1);inp.onmousedown=inp.onclick=inp.ondblclick=e=>e.stopPropagation()}
+// сделать o дочерним к pid (null — в корень), мировая позиция/поворот/масштаб сохраняются
+function reparent(o,pid){
+  if(!canParent(o.id,pid))return false;
+  const M=wmat(o),np=pid!=null?get(pid):null,I=np?invM(wmat(np)):null,L=I?mulM(I,M):M,d=decomp(L,o.rx,o.ry,o);
+  if(pid==null)delete o.parent;else o.parent=pid;
+  o.x=rd(d.x);o.y=rd(d.y);o.r=rd(d.r);o.sx=rd(d.sx);o.sy=rd(d.sy);return true}
+// pid — новый родитель; ref+pos('before'|'after') — позиция среди соседей, иначе в конец
+function moveObj(o,pid,ref,pos){
+  if(!reparent(o,pid))return;
+  objs=objs.filter(x=>x!==o);
+  if(ref){const i=objs.indexOf(ref);objs.splice(pos=='after'?i+1:i,0,o)}else objs.push(o);
+  if(pid!=null)hcol.delete(pid);sel=o.id;refresh()}
+function toW(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left-r.width/2)/cam.z+cam.x,y:-(e.clientY-r.top-r.height/2)/cam.z+cam.y}}
+function hit(w,scr){const L=order();for(let i=L.length-1;i>=0;i--){const{o,on,M}=L[i];if(!on||!o.screen!==!scr)continue;const I=invM(M);if(!I)continue;const p=apM(I,w.x,w.y),[sw,sh]=size(o);if(Math.abs(p.x)<=sw/2&&Math.abs(p.y)<=sh/2)return o}return scr?null:hit(w,true)}
+// ---- draw
+let tcN=0;
+function tint(a,col){if(col=='#ffffff')return a.img;const k=a.id+col;if(tc[k])return tc[k];if(++tcN>96){for(const q in tc)delete tc[q];tcN=1}const c=document.createElement('canvas');c.width=a.img.width;c.height=a.img.height;const x=c.getContext('2d');x.drawImage(a.img,0,0);x.globalCompositeOperation='multiply';x.fillStyle=col;x.fillRect(0,0,c.width,c.height);x.globalCompositeOperation='destination-in';x.drawImage(a.img,0,0);return tc[k]=c}
+// draw() только ставит кадр в очередь (десятки вызовов за событие = одна перерисовка); drawNow() — немедленно
+let dq=0;
+function draw(){if(dq)return;dq=requestAnimationFrame(()=>{dq=0;drawNow()})}
+function drawNow(){if(dq){cancelAnimationFrame(dq);dq=0}
+  const W=cv.clientWidth,H=cv.clientHeight,d=devicePixelRatio||1;if(cv.width!=Math.round(W*d)||cv.height!=Math.round(H*d)){cv.width=Math.round(W*d);cv.height=Math.round(H*d)}
+  g.setTransform(d,0,0,d,0,0);render(g,W,H,cam,false)}
+new ResizeObserver(()=>draw()).observe(cv);
+function render(g,W,H,cam,clean){const X_=window.expMode;if(X_){if(X_.bg){g.fillStyle=X_.bg;g.fillRect(0,0,W,H)}}else{g.fillStyle='#4a4a4a';g.fillRect(0,0,W,H)}
+const sx=x=>(x-cam.x)*cam.z+W/2,sy=y=>H/2-(y-cam.y)*cam.z;
+g.lineWidth=1;const x0=Math.floor(cam.x-W/2/cam.z),x1=Math.ceil(cam.x+W/2/cam.z),y0=Math.floor(cam.y-H/2/cam.z),y1=Math.ceil(cam.y+H/2/cam.z);
+if(cam.z>12&&!window.expMode){
+  g.strokeStyle='#585858';g.beginPath();for(let x=x0;x<=x1;x++)if(x){g.moveTo(sx(x)+.5,0);g.lineTo(sx(x)+.5,H)}for(let y=y0;y<=y1;y++)if(y){g.moveTo(0,sy(y)+.5);g.lineTo(W,sy(y)+.5)}g.stroke();
+  g.strokeStyle='#7a4040';g.beginPath();g.moveTo(sx(0)+.5,0);g.lineTo(sx(0)+.5,H);g.stroke();
+  g.strokeStyle='#407a40';g.beginPath();g.moveTo(0,sy(0)+.5);g.lineTo(W,sy(0)+.5);g.stroke()}
+if(window.drawScreens)drawScreens(g,W,H,cam,clean);
+for(const{o,on,M}of order()){if(!on||o.screen)continue;const im=window.btnView?btnView(o):(o.img||o.text),[w,h]=size(o,o.img?im:null);
+// отсечение: пропускаем объекты, чей ограничивающий прямоугольник целиком за экраном
+{const hw=w/2,hh=h/2,ax=Math.abs(M[0])*hw+Math.abs(M[2])*hh,ay=Math.abs(M[1])*hw+Math.abs(M[3])*hh,px=sx(M[4]),py=sy(M[5]);
+ if(!(o.id==sel)&&(px+ax*cam.z<-8||px-ax*cam.z>W+8||py+ay*cam.z<-8||py-ay*cam.z>H+8))continue}
+const S=(lx,ly)=>{const p=apM(M,lx,ly);return[sx(p.x),sy(p.y)]};
+g.save();g.transform(M[0]*cam.z,-M[1]*cam.z,M[2]*cam.z,-M[3]*cam.z,sx(M[4]),sy(M[5]));g.scale(1,-1);   // локальные оси объекта, y вниз
+if(o.img&&im){g.globalAlpha=im.alpha;const a=im.sprite&&ast(im.sprite);if(a&&a.img)g.drawImage(tint(a,im.color),-w/2,-h/2,w,h);else{g.fillStyle=im.color;g.fillRect(-w/2,-h/2,w,h)}g.globalAlpha=1}
+else if(o.text&&window.drawText&&im)drawText(g,o.text,im);
+else if(o.grad&&window.drawGrad)drawGrad(g,o.grad,w,h);
+g.restore();
+if(!o.img&&!o.text&&!o.grad&&!clean&&o.id!=sel){g.fillStyle='#bbb';g.fillRect(sx(M[4])-3,sy(M[5])-3,6,6)}}
+if(!clean&&!window.playing&&window.drawGizmo)drawGizmo(g,W,H,cam)}
+// ---- panels
+const hcol=new Set();   // свёрнутые узлы Hierarchy (только интерфейс, не сохраняется)
+// ---- иконки и цвета уровней в Hierarchy
+// у каждого УРОВНЯ вложенности свой оттенок фона (золотой угол даёт далёкие друг от друга цвета): все объекты одного уровня — одного цвета
+const hHue=depth=>Math.round((depth*137.508+25)%360);
+const hSvg=b=>`<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">${b}</svg>`;
+const HIC={
+  obj:hSvg('<path d="M8 1.8 14 5v6L8 14.2 2 11V5z"/><path d="M2 5l6 3.2L14 5M8 8.2v6"/>'),
+  img:hSvg('<rect x="2" y="3" width="12" height="10" rx="1.5"/><circle cx="5.6" cy="6.4" r=".9" fill="currentColor" stroke="none"/><path d="M2.6 12 6.4 8.4l2.6 2.4 1.8-1.7 2.6 2.9"/>'),
+  txt:hSvg('<path d="M3.5 4.2h9M8 4.2v8.4M6 12.6h4"/>'),
+  grad:hSvg('<rect x="2" y="3" width="12" height="10" rx="1.5"/><path d="M5 4v8" opacity=".95"/><path d="M8 4v8" opacity=".6"/><path d="M11 4v8" opacity=".3"/>'),
+  btn:hSvg('<rect x="1.8" y="4" width="12.4" height="8" rx="4"/><path d="M5.5 8h5"/>'),
+  scr:hSvg('<rect x="1.8" y="3" width="12.4" height="8.6" rx="1"/><path d="M5.5 14h5M8 11.6V14"/>'),
+  anim:'<svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 2l7 4-7 4z" fill="currentColor"/></svg>'};
+const hIcon=o=>o.screen?(HIC.scr||HIC.obj):o.btn?HIC.btn:o.text?HIC.txt:o.grad?HIC.grad:o.img?HIC.img:HIC.obj;
+// стиль строки: оттенок объекта (--h), отступ и вертикальные направляющие цветов предков
+function hStyle(o,d,anc){const g=[],sz=[],ps=[];
+  for(let k=0;k<d;k++){const c=`hsla(${hHue(k)},75%,62%,.55)`;g.push(`linear-gradient(${c},${c})`);sz.push('1px 100%');ps.push(`${6+k*16+7}px 0`)}
+  return`--h:${hHue(d)};padding-left:${6+d*16}px`+(d?`;background-image:${g.join(',')};background-size:${sz.join(',')};background-position:${ps.join(',')};background-repeat:no-repeat`:'')}
+function hier(){
+  const rows=[],kids=new Set(objs.map(o=>o.parent).filter(p=>p!=null));
+  let skip=-1;const anc=[];
+  for(const{o,d,on}of order()){anc.length=d;anc[d]=o.id;
+    if(skip>=0){if(d>skip)continue;skip=-1}
+    const hk=kids.has(o.id),cl=hcol.has(o.id);if(hk&&cl)skip=d;
+    rows.push(`<div class="it ${o.id==sel?'s':''}${on?'':' off'}${hk?' par':''}" draggable="true" data-id="${o.id}" style="${hStyle(o,d,anc)}"><b class="hwt" data-hw="${o.id}">${hk?(cl?'▸':'▾'):''}</b><i class="ico">${hIcon(o)}</i><span class="nm">${esc(o.name)}</span>${o.animator?`<i class="bdg" title="Animator">${HIC.anim}</i>`:''}</div>`)}
+  $('#hier').innerHTML=rows.join('')||'<div class="e">Пусто. ПКМ на сцене.</div>'}
+function grid(){window.projRender&&projRender()}
+const fld=(l,k,v,st)=>`<label class="f"><i data-d="${k}" data-s="${st}">${l}</i><input type="number" step="${st}" data-k="${k}" value="${rd(v)}"></label>`;
+function inspect(){if(window.assetInspect&&assetInspect())return;if(window.animInspect&&animInspect())return;const o=get(sel);if(!o){ins.innerHTML='<div class="e">Выберите объект</div>';return}
+const im=o.img,a=im&&im.sprite&&ast(im.sprite);
+ins.innerHTML=`<div class="sec" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-act ${o.active===false?'':'checked'} title="Active (GameObject.SetActive)"><input type="text" data-n value="${esc(o.name)}"></div>
+<div class="sec"><div class="sh">Transform</div>
+<div class="r"><span class="l">Position</span>${fld('X','x',o.x,.1)}${fld('Y','y',o.y,.1)}</div>
+<div class="r"><span class="l">Rotation</span>${fld('X','rx',o.rx||0,1)}${fld('Y','ry',o.ry||0,1)}${fld('Z','r',o.r,1)}</div>
+<div class="r"><span class="l">Scale</span>${fld('X','sx',o.sx,.1)}${fld('Y','sy',o.sy,.1)}</div>
+${o.parent!=null&&get(o.parent)?`<div class="r"><span class="l">Parent</span><span class="kv" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(get(o.parent).name)}</span><button data-unp title="Вынести из родителя (в корень)">⤒ Unparent</button></div>`:''}</div>
+${im?`<div class="sec"><div class="sh">Image<button data-rm>✕</button></div>
+<div class="r"><span class="l">Source Image</span><div class="slot" data-slot>${a?esc(spName(a)):'None (Sprite)'}</div></div>
+<div class="r"><span class="l">Color</span><input type="color" data-ik="color" value="${im.color}"></div>
+<div class="r"><span class="l">Alpha</span><input type="range" min="0" max="1" step="0.01" data-ik="alpha" value="${im.alpha}"><span data-av style="width:30px">${rd(im.alpha)}</span></div></div>`:''}
+${window.compHtml?compHtml(o):''}
+<div class="sec" style="text-align:center"><button data-add>Add Component</button></div>`}
+function refresh(){window.pfocus=false;hier();inspect();draw();window.animSel&&animSel()}
+// ---- inspector events
+ins.addEventListener('input',e=>{const t=e.target,o=get(sel);if(!o)return;
+if(t.dataset.k)chg(o,t.dataset.k,parseFloat(t.value)||0);
+else if(t.dataset.ik){const k=t.dataset.ik;chg(o,k,k=='alpha'?parseFloat(t.value):t.value);const av=ins.querySelector('[data-av]');if(av)av.textContent=rd(gim(o).alpha)}
+else if('act' in t.dataset){o.active=t.checked;hier()}
+else if('n' in t.dataset){o.name=t.value;hier()}
+draw()});
+ins.addEventListener('click',e=>{const t=e.target,o=get(sel);if(!o)return;
+if('rm' in t.dataset){o.img=null;refresh()}
+if('unp' in t.dataset){reparent(o,null);refresh()}
+if('add' in t.dataset){const r=t.getBoundingClientRect();const its=[];if(!o.img&&!o.text&&!o.grad&&!o.screen)its.push(['UI / Image',()=>{o.img=newImg();refresh()}]);if(window.compMenu)its.push(...compMenu(o));showMenu(r.left,r.bottom,its.length?its:[['(нет доступных)',()=>{}]])}
+if('slot' in t.dataset){const r=t.getBoundingClientRect();showMenu(r.left,r.bottom,[['None',()=>{chg(o,'sprite',null);refresh()}],...spriteList().map(a=>[spName(a),()=>{chg(o,'sprite',a.id);refresh()}])])}});
+ins.addEventListener('mousedown',e=>{const t=e.target,o=get(sel);if(!o||!t.dataset.d)return;const k=t.dataset.d,st=+t.dataset.s,x0=e.clientX,v0=pget(o,k);
+const mv=ev=>{chg(o,k,rd(v0+(ev.clientX-x0)*st*.5));t.nextElementSibling.value=pget(o,k);draw()};
+const up=()=>{removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};addEventListener('mousemove',mv);addEventListener('mouseup',up)});
+ins.addEventListener('dragover',e=>{if(e.target.dataset.slot!==undefined){e.preventDefault();e.target.classList.add('o')}});
+ins.addEventListener('dragleave',e=>e.target.classList.remove('o'));
+ins.addEventListener('drop',e=>{const o=get(sel),id=e.dataTransfer.getData('text/plain');if(e.target.dataset.slot!==undefined&&o&&id.startsWith('asset:')&&!isFont(+id.slice(6))){e.preventDefault();chg(o,'sprite',spr(+id.slice(6)));refresh()}});
+// ---- hierarchy
+const HI=$('#hier');let hdrag=null;
+const hclr=()=>{HI.classList.remove('hroot');HI.querySelectorAll('.hdc,.hdb,.hda').forEach(x=>x.classList.remove('hdc','hdb','hda'))};
+HI.addEventListener('click',e=>{const w=e.target.closest('[data-hw]');if(w){const id=+w.dataset.hw;hcol.has(id)?hcol.delete(id):hcol.add(id);hier();return}
+  const d=e.target.closest('.it');if(d){sel=+d.dataset.id;refresh()}});
+HI.addEventListener('contextmenu',e=>{e.preventDefault();const d=e.target.closest('.it');
+  if(d){sel=+d.dataset.id;refresh();const o=get(sel),wp=worldPos(o),id=o.id,its=[
+    ['Rename          F2',()=>renameObj(id)],
+    ['Create Empty Child',()=>add('GameObject',wp,null,id)],['Create Empty Parent',()=>emptyParent(id)],
+    ['UI / Image (child)',()=>add('Image',wp,newImg(),id)],['UI / Text (child)',()=>add('Text',wp,null,id,mkText())],['UI / Gradient (child)',()=>add('Gradient',wp,null,id,null,mkGrad())]];
+    if(o.parent!=null)its.push(['Unparent',()=>{reparent(o,null);refresh()}]);
+    its.push(['Duplicate',()=>dup(id)],['Delete',()=>del(id)]);
+    showMenu(e.clientX,e.clientY,its)}
+  else showMenu(e.clientX,e.clientY,createItems({x:0,y:0}))});
+// перетаскивание объектов: в середину строки — сделать дочерним, к верхнему/нижнему краю — вставить рядом (как в Unity)
+HI.addEventListener('dragstart',e=>{const d=e.target.closest('.it');if(!d)return;hdrag=+d.dataset.id;e.dataTransfer.setData('text/plain','obj:'+hdrag);e.dataTransfer.effectAllowed='move'});
+HI.addEventListener('dragend',()=>{hdrag=null;hclr()});
+const hzone=(e,d)=>{const r=d.getBoundingClientRect(),y=(e.clientY-r.top)/r.height;return y<.25?'b':y>.75?'a':'c'};
+HI.addEventListener('dragover',e=>{e.preventDefault();hclr();const d=e.target.closest('.it');
+  if(hdrag!=null){if(!d){HI.classList.add('hroot');e.dataTransfer.dropEffect='move';return}
+    if(!canParent(hdrag,+d.dataset.id)||hdrag==+d.dataset.id){e.dataTransfer.dropEffect='none';return}
+    d.classList.add({b:'hdb',a:'hda',c:'hdc'}[hzone(e,d)]);e.dataTransfer.dropEffect='move'}
+  else if(d)d.classList.add('hdc')});
+HI.addEventListener('dragleave',e=>{if(!HI.contains(e.relatedTarget))hclr()});
+HI.addEventListener('drop',e=>{e.preventDefault();hclr();const id=e.dataTransfer.getData('text/plain'),d=e.target.closest('.it');
+  if(id.startsWith('obj:')){const a=get(+id.slice(4));hdrag=null;if(!a)return;
+    if(!d){moveObj(a,null);return}
+    const t=get(+d.dataset.id);if(!t||t===a||!canParent(a.id,t.id))return;const z=hzone(e,d);
+    if(z=='c')moveObj(a,t.id);else moveObj(a,t.parent!=null?t.parent:null,t,z=='b'?'before':'after');return}
+  if(d&&id.startsWith('asset:')){const o=get(+d.dataset.id),aid_=+id.slice(6);
+    if(isFont(aid_)){if(!o.text){if(o.img||o.grad||o.screen)return;o.text=mkText()}o.text.font=aid_;sel=o.id;refresh();return}
+    if(o.text||o.grad||o.screen)return;if(!o.img)o.img=newImg();chg(o,'sprite',spr(aid_));sel=o.id;refresh()}});
+// ---- scene
+function createItems(w){return[['Create Empty',()=>add('GameObject',w)],['Screen (GIF)',()=>{const o=add('Screen',w);o.screen=mkScreen();refresh()}],['UI / Image',()=>add('Image',w,newImg())],['UI / Text',()=>add('Text',w,null,null,mkText())],['UI / Gradient',()=>add('Gradient',w,null,null,null,mkGrad())]]}
+cv.addEventListener('contextmenu',e=>{e.preventDefault();const w=toW(e),h=hit(w);if(h){sel=h.id;refresh();const wp=worldPos(h);showMenu(e.clientX,e.clientY,[['Rename          F2',()=>renameObj(h.id)],['Create Empty Child',()=>add('GameObject',wp,null,h.id)],['Create Empty Parent',()=>emptyParent(h.id)],['Duplicate',()=>dup(h.id)],['Delete',()=>del(h.id)]])}else showMenu(e.clientX,e.clientY,createItems(w))});
+// цепочка предков: [корень … объект]
+const chain=o=>{const a=[];for(let p=o,n=0;p&&n<64;p=p.parent!=null?get(p.parent):null,n++)a.unshift(p);return a};
+// клик по сцене: выбирается объект на уровне текущего выделения (по умолчанию — корневой родитель, а не дочерний, лежащий сверху).
+// Если выделен родитель — клик по его детям не «перехватывает» выделение; двойной клик — на уровень глубже, Ctrl+клик — сразу точный объект под курсором.
+function pick(h,e){
+  if(!h)return null;if(e.ctrlKey||e.metaKey)return h;
+  const ph=chain(h),s=get(sel);if(!s)return ph[0];
+  const ps=chain(s);let k=0;while(k<ps.length&&k<ph.length&&ps[k]===ph[k])k++;
+  if(k==ps.length){if(e.detail>=2&&k<ph.length)return ph[k];return s}
+  return ph[Math.min(k,ph.length-1)]}
+cv.addEventListener('mousedown',e=>{const w=toW(e);if(e.button==1||e.altKey){e.preventDefault();pan={x:e.clientX,y:e.clientY,cx:cam.x,cy:cam.y};return}
+if(e.button)return;const h=pick(hit(w),e);sel=h?h.id:null;if(h){const wp=worldPos(h);drag={dx:w.x-wp.x,dy:w.y-wp.y};for(let p=h;p&&p.parent!=null;p=get(p.parent))hcol.delete(p.parent)}refresh()});
+addEventListener('mousemove',e=>{if(pan){cam.x=pan.cx-(e.clientX-pan.x)/cam.z;cam.y=pan.cy+(e.clientY-pan.y)/cam.z;draw()}
+else if(drag){const o=get(sel),w=toW(e);if(!o)return;let wx=w.x-drag.dx,wy=w.y-drag.dy;if(e.ctrlKey){wx=Math.round(wx*4)/4;wy=Math.round(wy*4)/4}
+  const L=toLocal(o,wx,wy);chg(o,'x',rd(L.x));chg(o,'y',rd(L.y));window.animSync?animSync():inspect();draw()}});
+addEventListener('mouseup',()=>{pan=drag=null});
+cv.addEventListener('wheel',e=>{e.preventDefault();const w=toW(e),f=e.deltaY<0?1.15:1/1.15;cam.z=Math.min(1000,Math.max(10,cam.z*f));const w2=toW(e);cam.x+=w.x-w2.x;cam.y+=w.y-w2.y;draw()},{passive:false});
+cv.addEventListener('dragover',e=>e.preventDefault());
+cv.addEventListener('drop',e=>{e.preventDefault();if(e.dataTransfer.files.length)return importFiles(e.dataTransfer.files);
+const id=e.dataTransfer.getData('text/plain');if(!id.startsWith('asset:'))return;const w=toW(e),h=hit(w);
+if(isFont(+id.slice(6))){const f=ast(+id.slice(6));   // шрифт на сцену: создаёт Text с этим шрифтом / ставит шрифт объекту
+  if(h){if(!h.text){if(h.img||h.grad||h.screen)return;h.text=mkText()}h.text.font=f.id;sel=h.id;refresh()}else{const t=mkText();t.font=f.id;add('Text',w,null,null,t)}return}
+const a=ast(spr(+id.slice(6)));
+if(h){if(h.text||h.grad||h.screen)return;if(!h.img)h.img=newImg();chg(h,'sprite',a.id);sel=h.id;refresh()}else add(a.name,w,newImg(a.id))});
+addEventListener('keydown',e=>{if(/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(window.playing||window.amode=='anim'||window.pfocus||(window.amode=='clip'&&window.tlfocus))return;if(e.key=='Delete'&&sel)del(sel);if(e.ctrlKey&&e.key=='d'){e.preventDefault();dup(sel)}
+  if(e.key=='F2'&&sel!=null&&get(sel)){e.preventDefault();renameObj(sel);return}
+  const o=get(sel);if(!o||e.ctrlKey||e.altKey)return;
+  if(e.key=='f'||e.key=='F'){const p=worldPos(o);cam.x=p.x;cam.y=p.y;draw();return}                       // F — камера на выбранный объект
+  const st=e.shiftKey?1:.1,dx=e.key=='ArrowRight'?st:e.key=='ArrowLeft'?-st:0,dy=e.key=='ArrowUp'?st:e.key=='ArrowDown'?-st:0;
+  if(dx||dy){e.preventDefault();const w=worldPos(o),L=toLocal(o,w.x+dx,w.y+dy);chg(o,'x',rd(L.x));chg(o,'y',rd(L.y));window.animSync?animSync():inspect();draw()}});
+new ResizeObserver(draw).observe(cv.parentElement);
+// клик по числовому/текстовому полю сразу выделяет всё содержимое (Inspector, таймлайн, диалоги…)
+{const sa=t=>t&&t.tagName=='INPUT'&&(t.type=='number'||t.type=='text');
+document.addEventListener('mousedown',e=>{if(sa(e.target)&&document.activeElement!==e.target)e.target._sa=1},true);
+document.addEventListener('focusin',e=>{if(sa(e.target)){const t=e.target;setTimeout(()=>{if(document.activeElement===t)t.select()},0)}});
+document.addEventListener('mouseup',e=>{if(sa(e.target)&&e.target._sa){e.target._sa=0;e.preventDefault()}},true)}
+// ---- splitters
+function split(id,fn){const s=$(id);s.onmousedown=e=>{e.preventDefault();s.classList.add('d');document.body.style.cursor=getComputedStyle(s).cursor;const mv=ev=>{fn(ev,$('#app').getBoundingClientRect())},up=()=>{s.classList.remove('d');document.body.style.cursor='';removeEventListener('mousemove',mv);removeEventListener('mouseup',up)};addEventListener('mousemove',mv);addEventListener('mouseup',up)}}
+const A=$('#app'),cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+split('#s1',(e,r)=>A.style.setProperty('--lw',cl(e.clientX-r.left,80,r.width-400)+'px'));
+split('#s2',(e,r)=>A.style.setProperty('--rw',cl(r.right-e.clientX,120,r.width-300)+'px'));
+split('#s3',(e,r)=>A.style.setProperty('--bh',cl(r.bottom-e.clientY,60,r.height-150)+'px'));
+</script><script src="anim.js"></script><script src="play.js"></script><script src="text.js"></script><script src="gradient.js"></script><script src="screen.js"></script><script src="gizmo.js"></script><script src="playersrc.js"></script><script src="exporter.js"></script><script src="project.js"></script><script src="save.js"></script></body></html>
