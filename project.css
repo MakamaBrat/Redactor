@@ -1,0 +1,630 @@
+/* ===== Project browser ===== */
+#proj{--ts:96px;overflow:hidden}
+.ptools{display:flex;gap:6px;align-items:center}
+.ptools input[type=text]{width:150px}
+.ptools input[type=range]{width:80px;flex:none}
+#pbody{flex:1;display:grid;grid-template-columns:var(--tw,200px) 4px minmax(0,1fr);min-height:0}
+#ptree{overflow:auto;background:#282828;padding:2px 0}
+.tn{display:flex;align-items:center;gap:4px;padding:2px 6px;cursor:default;white-space:nowrap}
+.tn:hover{background:#3a3a3a}.tn.s{background:var(--a)}
+.tn .fsv{width:16px;height:14px;flex:none}
+.tw{width:12px;text-align:center;color:#aaa;font-weight:normal;cursor:pointer;flex:none}
+.dt{outline:1px solid #5aa0ff;outline-offset:-1px;background:#2c5d8766!important}
+#pmain{display:flex;flex-direction:column;min-width:0;min-height:0}
+#pcrumb{display:flex;align-items:center;gap:2px;padding:3px 8px;background:#333;border-bottom:1px solid var(--b);flex:none;overflow:hidden;white-space:nowrap}
+#pcrumb i{color:#777;font-style:normal;padding:0 2px}
+.cr{padding:1px 6px;border-radius:2px;cursor:pointer}.cr:hover{background:#4a4a4a}
+#pgrid{flex:1;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:6px;padding:8px}
+#pgrid .e{width:100%}
+.tile{width:var(--ts);text-align:center;cursor:default;position:relative;padding:3px;border:1px solid transparent;border-radius:3px;flex:none}
+.tile:hover{background:#3a3a3a}.tile.s{background:var(--a)}
+.tile .th{width:var(--ts);height:var(--ts);margin:0 0 3px;display:flex;align-items:center;justify-content:center;background:conic-gradient(#2a2a2a 25%,#343434 0 50%,#2a2a2a 0 75%,#343434 0) 0 0/12px 12px;border:1px solid #111;box-sizing:border-box;overflow:hidden}
+.tile .th img{max-width:100%;max-height:100%;display:block}
+.tile.fol .th{background:none;border:0}
+.tile .fsv{width:100%;height:100%}
+.tile span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile input.rn{width:100%;padding:0 2px;font-size:12px}
+.tile.sub{border-left:2px solid #5aa0e0;border-radius:0 3px 3px 0}
+.tile .ex{position:absolute;right:-1px;top:calc(var(--ts)/2 - 10px);width:14px;height:22px;line-height:22px;background:#444;border:1px solid #111;color:#ddd;cursor:pointer;font-size:9px;font-weight:normal;z-index:1}
+.tile .ex:hover{background:var(--a)}
+#pgrid.dt{background:#2c5d8733!important}
+
+/* asset inspector */
+.prev{height:170px;margin:8px;background:conic-gradient(#2a2a2a 25%,#343434 0 50%,#2a2a2a 0 75%,#343434 0) 0 0/12px 12px;border:1px solid #111;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.prev img{max-width:100%;max-height:100%;image-rendering:pixelated}
+.kv{color:#aaa}
+select.wide{max-width:none;flex:1}
+
+/* ===== Sprite Editor ===== */
+#sped{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+.spw{width:min(1300px,96vw);height:min(820px,94vh);background:var(--p);border:1px solid #000;box-shadow:0 8px 30px #000a;display:flex;flex-direction:column;min-width:0}
+.sph{display:flex;align-items:center;gap:6px;padding:5px 8px;background:#3c3c3c;border-bottom:1px solid var(--b)}
+.sph .grow{flex:1}.sph #sp-title{color:#aaa;margin-left:6px}
+.spb{flex:1;display:flex;min-height:0}
+.spc{flex:1;position:relative;min-width:0;background:#303030}
+#spcv{width:100%;height:100%;display:block}
+#sp-st{position:absolute;left:0;right:0;bottom:0;padding:3px 8px;background:#262626cc;color:#aaa;pointer-events:none;white-space:nowrap;overflow:hidden}
+.sps{width:250px;display:flex;flex-direction:column;border-left:1px solid var(--b);min-height:0}
+.sps .sl{flex:1;overflow:auto;border-bottom:0}
+#sp-list .it{display:flex;justify-content:space-between;gap:6px;padding:2px 8px;white-space:nowrap}
+#sp-list .it span:first-child{overflow:hidden;text-overflow:ellipsis}
+#sp-list small{color:#aaa}
+#spsl{position:absolute;left:10px;top:10px;width:290px;background:#2d2d2df2;border:1px solid #111;box-shadow:0 4px 14px #000a;padding:8px}
+#spsl .r input[type=number]{width:60px;flex:none}
+#spsl .l{width:100px}
+#spsl select{max-width:none;flex:1}
+#sp-msg{color:#aaa;margin-left:6px}
+
+/* ===== Animator preview ===== */
+#apw{position:absolute;right:8px;bottom:8px;width:280px;background:#2d2d2dee;border:1px solid #111}
+#apw .apt{padding:2px 6px;background:#3c3c3c;color:#aaa;border-bottom:1px solid #111;font-size:11px}
+#apv{display:block;width:100%;height:190px;cursor:grab}
+
+/* ===== Animation (timeline / dopesheet) ===== */
+#s5{flex:none;height:5px}
+#anm{flex:none;height:var(--ah,260px);max-height:75%;min-height:110px;display:flex;flex-direction:column;background:var(--p);border-top:1px solid #000}
+#anm.rec{box-shadow:inset 0 0 0 1px #c33}
+#tl-bar{display:flex;flex-wrap:wrap;align-items:center;gap:3px 6px;padding:3px 6px;background:#3c3c3c;border-bottom:1px solid var(--b);flex:none}
+#tl-bar select{max-width:150px}
+#tl-bar input[type=text]{width:120px}
+#tl-bar input[type=number]{width:58px}
+#tl-bar label{display:flex;align-items:center;gap:3px;color:#bbb}
+#tl-bar button:disabled,#tl-bar input:disabled,#tl-bar select:disabled{opacity:.45}
+#tl-f{color:#888;min-width:60px}
+.sepv{width:1px;height:16px;background:#555;display:inline-block}
+#tl-rec.on{background:#b02a2a;color:#fff}
+#tl-pl{min-width:30px}
+#tl-body{flex:1;display:flex;min-height:0}
+#tl-lw{width:260px;flex:none;display:flex;flex-direction:column;border-right:1px solid var(--b);min-width:0}
+#tl-lh{height:22px;flex:none;box-sizing:border-box;padding:3px 8px;background:#333;border-bottom:1px solid var(--b);color:#aaa}
+#tl-lc{flex:1;overflow:hidden;position:relative;min-height:0}
+#tl-list{position:absolute;left:0;right:0;top:0}
+.tg,.tp{height:22px;box-sizing:border-box;display:flex;align-items:center;gap:4px;padding:0 4px;white-space:nowrap;overflow:hidden}
+.tg{background:#383838;font-weight:600;cursor:pointer;border-bottom:1px solid #222}
+.tg.on{background:var(--a)}
+.tp{border-bottom:1px solid #262626}
+.tp.s{background:#2c4a6e}
+.tp .tn2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding-left:12px}
+.tp input[type=number]{width:62px;flex:none;padding:0 3px;height:18px}
+.tp input[type=color]{width:40px;height:16px;flex:none}
+.tp .slot{flex:none;width:90px;padding:0 4px;font-size:11px;line-height:16px}
+.tp button{padding:0 5px;line-height:16px;height:18px}
+.tp .kb{color:#888}.tp .kb.on{color:#6cf}
+#tl-cv{flex:1;position:relative;min-width:0;overflow:hidden;background:#2b2b2b}
+#tlc{position:absolute;left:0;top:0;width:100%;height:100%;display:block}
+#tl-empty{position:absolute;left:0;top:22px;right:0;bottom:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#888;background:#2b2b2b}
+
+/* ===== выпадающий список анимаций ===== */
+#tl-bar select{max-width:200px}
+#tl-empty .sub{font-size:11px;color:#777}
+
+.trt{flex:none;width:52px;height:52px;position:relative;cursor:grab;border:1px solid #111;box-sizing:border-box;display:flex;align-items:center;justify-content:center;background:conic-gradient(#2a2a2a 25%,#343434 0 50%,#2a2a2a 0 75%,#343434 0) 0 0/12px 12px}
+.trt:hover{border-color:#5aa0e0}
+.trt img{max-width:100%;max-height:100%;pointer-events:none}
+.trt i{position:absolute;left:2px;top:0;font-size:10px;font-style:normal;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000}
+.trt.off{opacity:.3}
+
+/* ===== Play / компоненты ===== */
+#play-btn{margin-left:8px}
+#play-btn.on{background:#2f8f3f;color:#fff}
+#scn.playing{box-shadow:inset 0 0 0 2px #3a8a3a}
+.it.off{opacity:.5;font-style:italic}
+.ev{margin:4px 0;padding:4px;background:#262626;border:1px solid #111;border-radius:3px}
+.ev .r{margin:2px 0}
+
+/* ===== Menubar ===== */
+#mbar{flex:none;display:flex;align-items:center;gap:2px;height:26px;padding:0 6px;background:#2b2b2b;border-bottom:1px solid #111}
+#mbar .mb{background:transparent;border:0;border-radius:2px;padding:3px 10px}
+#mbar .mb:hover{background:#4a4a4a}
+#mbar .mgrow{flex:1}
+#pname{color:#aaa;margin-right:10px;max-width:40vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#msave.dirty{background:#2c5d87;color:#fff}
+#pause-btn{margin-left:2px}#pause-btn.on{background:#c0702a;color:#fff}#pause-btn:disabled{opacity:.45}
+#menu{white-space:pre}
+
+/* ===== Start screen (Hub) ===== */
+#hub{position:fixed;inset:0;z-index:50;background:#2a2a2a;align-items:center;justify-content:center}
+.hw{display:flex;width:min(980px,94vw);height:min(560px,88vh);background:#333;border:1px solid #111;box-shadow:0 10px 40px #000a}
+.hl{width:300px;flex:none;background:#2d2d2d;border-right:1px solid #111;padding:28px 24px;display:flex;flex-direction:column;gap:22px}
+.logo{font-size:24px;font-weight:300;letter-spacing:.5px}.logo b{color:#5aa0e0;font-weight:600}
+.hbtn-col{display:flex;flex-direction:column;gap:10px}
+.hbtn{padding:11px 14px;font-size:14px;text-align:left;border-radius:3px}
+.hbtn.pri,button.pri{background:#2c5d87;color:#fff}.hbtn.pri:hover,button.pri:hover{background:#3772a6}
+.hwarn{color:#e8a050;font-size:11px;line-height:1.5}.hwarn button{margin-top:6px}
+.hr{flex:1;min-width:0;display:flex;flex-direction:column}
+.hh{padding:14px 18px;font-size:15px;border-bottom:1px solid #111;background:#383838}
+#h-list{flex:1;overflow:auto}
+.hrec{position:relative;padding:10px 40px 10px 18px;border-bottom:1px solid #2a2a2a;cursor:pointer}
+.hrec:hover{background:#3d4a58}
+.hn{font-size:14px}.hp{color:#999;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hd{color:#777;font-size:11px;margin-top:2px}
+.hx{position:absolute;right:10px;top:12px;padding:0 6px;opacity:0}.hrec:hover .hx{opacity:1}
+
+/* ===== Диалоги ===== */
+#dlg{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.5);align-items:center;justify-content:center}
+.dbox{width:380px;max-width:94vw;background:#383838;border:1px solid #000;box-shadow:0 8px 30px #000b}
+.dbox.wide{width:560px}
+.dh{padding:8px 12px;background:#4a4a4a;border-bottom:1px solid #111;font-weight:600}
+.db{padding:14px 12px;line-height:1.5}.db label{display:block;margin-bottom:6px;color:#bbb}
+.db .l{width:100px}.db .r{margin:8px 0}.db .hint{color:#999;font-size:11px;margin-top:6px;word-break:break-all}
+.np-err{color:#ff7b6b;margin-top:6px;min-height:14px}
+.df{padding:8px 12px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid #111}
+
+/* ===== Уведомления ===== */
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:70;background:#1e1e1e;border:1px solid #555;border-left:3px solid #3a8a3a;padding:7px 14px;border-radius:3px;pointer-events:none;transition:opacity .15s,transform .15s;max-width:80vw}
+#toast.show{opacity:1;transform:translateX(-50%)}
+#toast.err{border-left-color:#c33}
+
+/* ===== Клипы / контроллеры в Project ===== */
+.tile.ani .th{background:#262626}
+
+/* шапка Scene/Animator/Animation: кнопки не переносятся, длинная подсказка обрезается */
+#sv>.ph>span:first-child{white-space:nowrap;flex:none}
+#hint{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-left:12px}
+
+/* ===== Hierarchy: дерево / drag&drop ===== */
+#hier{font-size:13px}
+#hier .it{display:flex;align-items:center;white-space:nowrap;height:27px;box-sizing:border-box;overflow:hidden;flex:none;padding-right:8px;background-color:hsl(var(--h,210),38%,23%);box-shadow:inset 3px 0 0 hsl(var(--h,210),70%,58%);border-bottom:1px solid #00000040}
+#hier .it:hover{background-color:hsl(var(--h,210),42%,31%)}
+#hier .it.s{background-color:var(--a)}
+#hier .it .ico{flex:none;display:flex;width:16px;height:16px;margin:0 7px 0 2px;color:hsl(var(--h,210),80%,74%)}
+#hier .it.s .ico{color:#fff}
+#hier .it .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#hier .it.par .nm{font-weight:600}
+#hier .it .bdg{flex:none;display:flex;margin-left:6px;color:#8fd0ff;opacity:.85}
+#hier .hwt{width:14px;flex:none;text-align:center;color:#aaa;font-weight:normal;cursor:pointer;margin-right:2px}
+#hier .it.hdc{outline:1px solid #5aa0ff;outline-offset:-1px;background:#2c5d8766}
+#hier .it.hdb{box-shadow:inset 0 2px 0 #5aa0ff}
+#hier .it.hda{box-shadow:inset 0 -2px 0 #5aa0ff}
+#hier.hroot{box-shadow:inset 0 0 0 1px #5aa0ff}
+/* ===== шрифты / Text ===== */
+.tile .fa{font-size:calc(var(--ts)*.42);line-height:1;color:#e8e8e8;white-space:nowrap}
+.fprev{margin:8px;padding:10px;background:#222;border:1px solid #111;color:#eee;word-break:break-word;user-select:text}
+textarea[data-tx]{width:100%;box-sizing:border-box;resize:vertical;min-height:48px;background:#2a2a2a;color:var(--t);border:1px solid #111;border-radius:2px;padding:3px 5px;font:inherit;user-select:text}
+
+#hier .it input.rn{flex:1;min-width:0;height:21px;box-sizing:border-box;padding:0 3px;margin:0 4px 0 0;font-size:12px}
+
+#tr-step{width:46px}
+
+
+/* ===== Animation: крупное окно, чёрно-серые зоны, значки ===== */
+#anm{height:var(--ah,380px);max-height:88%;min-height:180px;background:#1e1e1e;border-top:1px solid #000}
+#s5{height:6px;background:#0e0e0e;cursor:ns-resize}#s5:hover{background:#2c5d87}
+#tl-bar{gap:6px;padding:5px 8px;background:#131313;border-bottom:1px solid #000}
+#tl-bar .grp{display:flex;align-items:center;gap:5px;padding:3px 6px;background:#242424;border:1px solid #000;border-radius:4px;box-shadow:inset 0 1px 0 #333}
+#tl-bar .grow{flex:1}
+#tl-bar .bi{color:#8a8a8a;font-size:14px}#tl-bar .lb{color:#8a8a8a}
+#tl-bar b#tl-len{color:#e6e6e6;font-weight:600;min-width:86px}
+#tl-bar button{background:#3a3a3a;border:1px solid #0a0a0a;border-radius:3px;padding:3px 9px;font-size:12px;line-height:16px}
+#tl-bar button:hover:not(:disabled){background:#4c4c4c}
+#tl-bar button.ib{min-width:30px;padding:3px 6px;font-size:13px}
+#tl-bar select,#tl-bar input[type=text],#tl-bar input[type=number]{background:#161616;border:1px solid #000;border-radius:3px;padding:3px 5px;height:22px;box-sizing:border-box}
+#tl-bar select{max-width:210px}#tl-bar input[type=text]{width:130px}#tl-bar input[type=number]{width:62px}
+#tl-bar label{color:#bbb}
+#tl-f{color:#8a8a8a;min-width:70px}
+#tl-pl{background:#2f4f2f!important}#tl-pl:hover:not(:disabled){background:#3b6b3b!important}
+#tl-rec.on{background:#b02a2a!important;color:#fff}
+#tl-body{background:#1b1b1b}
+#tl-lw{width:300px;background:#222;border-right:1px solid #000}
+#tl-lh{height:28px;padding:6px 10px;background:#141414;border-bottom:1px solid #000;color:#9a9a9a;font-weight:600;letter-spacing:.3px}
+.tg,.tp{height:28px;font-size:12.5px}
+.tg{background:#101010;color:#eee;border-bottom:1px solid #000;box-shadow:inset 3px 0 #555;padding-left:8px}
+.tg.on{background:#15283a;box-shadow:inset 3px 0 #5aa0ff}
+.tg .gn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tg small{background:#2a2a2a;color:#aaa;border-radius:8px;padding:0 6px;font-weight:normal;line-height:15px}
+.tp{border-bottom:1px solid #1a1a1a}
+.tp:nth-child(odd){background:#262626}.tp:nth-child(even){background:#2f2f2f}
+.tp:hover{background:#3a3a3a}
+.tp.s,.tp.s:hover{background:#2c4a6e}
+.ic{flex:none;width:16px;text-align:center;color:#8a8a8a;font-weight:normal}
+.tg .ic{color:#aaa}
+.tp .tn2{padding-left:2px}
+.tp input[type=number]{height:22px;width:66px;background:#161616;border:1px solid #000;border-radius:2px}
+.tp input[type=color]{height:20px}
+.tp button{height:22px;background:#383838}.tp button:hover{background:#4d4d4d}
+#tl-cv{background:#1b1b1b}
+#tl-empty{top:28px;background:#1b1b1b}
+/* Hierarchy: класс .db (диалог) не должен ломать строку при перетаскивании */
+#hier .it.db{padding-top:0;padding-bottom:0;padding-right:0;line-height:normal}
+
+/* ===== Hierarchy: крупный, хорошо видимый список ===== */
+.pn.act{border-color:var(--a);box-shadow:0 0 0 1px var(--a) inset}
+#p1>.ph{font-size:14px;font-weight:700;padding:7px 12px;letter-spacing:.3px}
+#hier{font-size:15px}
+#hier .it{height:38px;padding-right:12px;border-bottom:1px solid #00000055;box-shadow:inset 4px 0 0 hsl(var(--h,210),75%,60%)}
+#hier .it .nm{font-weight:500;color:#f2f4f8}
+#hier .it .ico{width:22px;height:22px;margin:0 9px 0 3px;color:hsl(var(--h,210),90%,78%)}
+#hier .it .ico svg{width:100%;height:100%}
+#hier .hwt{width:20px;font-size:14px;color:#d0d4dc}
+#hier .it .bdg svg{width:13px;height:13px}
+#hier .it{background-color:hsl(var(--h,210),42%,25%)}
+#hier .it:hover{background-color:hsl(var(--h,210),46%,33%)}
+#hier .it.s{background-color:var(--a);box-shadow:inset 4px 0 0 #fff}
+#hier .it.s .nm{font-weight:700;color:#fff}
+#hier .it input.rn{height:26px;font-size:14px}
+/* ===== ползунок уровней: компактный, «дизайнерский» ===== */
+#hlv{display:flex;align-items:center;gap:6px;margin:7px 9px 5px;padding:5px 8px;flex:none;border-radius:999px;
+  background:linear-gradient(180deg,#22252b,#2b2f36);border:1px solid #14161a;box-shadow:inset 0 1px 3px #0009,0 1px 0 #ffffff12}
+#hlv #hlt{flex:none;min-width:42px;text-align:center;font-size:11px;font-weight:700;color:#fff;border-radius:999px;padding:3px 8px;
+  background:linear-gradient(135deg,var(--a),#8b6cff);box-shadow:0 1px 4px #0008}
+#hlv button{flex:none;width:20px;height:20px;padding:0;border-radius:50%;background:#3a3e47;border:0;color:#cfd4dc;font-size:15px;line-height:18px;cursor:pointer}
+#hlv button:hover{background:var(--a);color:#fff}
+#hlv .hlw{position:relative;flex:1;min-width:0;height:18px}
+#hlv #hlr{position:absolute;left:0;right:0;top:50%;width:100%;margin:0;transform:translateY(-50%);height:6px;-webkit-appearance:none;appearance:none;border-radius:3px;outline:none;cursor:pointer;
+  background:linear-gradient(90deg,var(--a),#8b6cff) 0/calc(var(--fill,0)*100%) 100% no-repeat,#0f1114;box-shadow:inset 0 1px 2px #000a}
+#hlv #hlr::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,#cfd8ff);box-shadow:0 0 0 2px var(--a),0 0 8px #5aa0ffaa;cursor:grab;position:relative;z-index:2}
+#hlv #hlr:active::-webkit-slider-thumb{cursor:grabbing}
+#hlv .hlk{position:absolute;inset:0;pointer-events:none}
+#hlv .hlk i{position:absolute;top:50%;left:calc(7px + (100% - 14px)*var(--f));width:3px;height:3px;margin:-1.5px 0 0 -1.5px;border-radius:50%;background:#5b616c;z-index:1}
+#hlv .hlk i.on{background:#fff}
+#hlv #hlr:disabled,#hlv button:disabled{opacity:.35;cursor:default}
+/* плавное схлопывание и исчезновение невыбранных уровней; соседние уровни — мелко и полупрозрачно */
+#hier .it{transition:height .24s ease,opacity .22s ease,padding-left .24s ease,border-bottom-width .24s ease,font-size .24s ease}
+#hier .it .ico{transition:transform .24s ease}
+#hier .it.hz{height:0;opacity:0;border-bottom-width:0;pointer-events:none}
+#hier .it.hn{height:19px;font-size:11px;opacity:.4}
+#hier .it.hn:hover{opacity:.85}
+#hier .it.hn .ico{transform:scale(.6)}
+#hier.lv .it{padding-left:12px!important;background-image:none!important}
+
+/* ===== нижняя панель Project: выезжает снизу, сцена растягивается ===== */
+@property --bv{syntax:'<length>';inherits:true;initial-value:0px}
+@property --bs{syntax:'<length>';inherits:true;initial-value:5px}
+#app{--bv:var(--bh);--bs:5px;grid-template-rows:minmax(80px,1fr) var(--bs) var(--bv);
+  transition:--bv .3s cubic-bezier(.2,.8,.2,1),--bs .3s cubic-bezier(.2,.8,.2,1)}
+#app.dr{transition:none}
+#app.pc{--bv:0px;--bs:0px}
+#app.pc #s3{visibility:hidden}
+#proj{transition:opacity .22s ease}
+#app.pc #proj{opacity:0;pointer-events:none;border-width:0}
+#pgrid{gap:10px;padding:12px}
+.tile{font-size:13px;padding:5px}
+#pedge{position:fixed;left:50%;bottom:0;transform:translate(-50%,0);z-index:8;pointer-events:none;
+  padding:3px 22px 2px;border-radius:10px 10px 0 0;font-size:11px;font-weight:700;letter-spacing:1px;color:#dfe6f5;
+  background:linear-gradient(180deg,#3a3e47,#2a2d33);border:1px solid #14161a;border-bottom:0;box-shadow:0 -2px 10px #0008;
+  opacity:0;transition:opacity .2s ease .15s}
+#app.pc~#pedge,body:has(#app.pc) #pedge{opacity:.9}
+
+/* ===== выравнивание интерфейса ===== */
+/* единая шапка у всех панелей */
+.ph,#p1>.ph{box-sizing:border-box;min-height:30px;padding:0 10px;font-size:13px;font-weight:700;letter-spacing:.2px}
+#sv>.ph{font-weight:400}
+.ph button{line-height:16px}
+.ptools{font-weight:400}
+
+/* ===== Hierarchy: компактнее + регулятор размера строк (--hs, 0.7…1.3) ===== */
+#p1{--hs:1}
+.hsz{display:flex;align-items:center;gap:5px;font-weight:400;color:#8a8f99}
+.hsz i{font-style:normal;font-size:9px}.hsz b{font-size:14px;font-weight:600}
+.hsz input[type=range]{width:64px;flex:none;height:4px;margin:0;cursor:pointer;accent-color:var(--a)}
+#hlv{margin:6px 8px 4px;padding:4px 7px}
+#hier{font-size:calc(13px*var(--hs))}
+#hier .it{height:calc(31px*var(--hs));padding-right:10px;box-shadow:inset 3px 0 0 hsl(var(--h,210),75%,60%)}
+#hier .it.s{box-shadow:inset 3px 0 0 #fff}
+#hier .it .ico{width:calc(18px*var(--hs));height:calc(18px*var(--hs));margin:0 7px 0 3px}
+#hier .hwt{width:16px;font-size:12px}
+#hier .it .bdg svg{width:calc(12px*var(--hs));height:calc(12px*var(--hs))}
+#hier .it input.rn{height:calc(23px*var(--hs));font-size:calc(12.5px*var(--hs))}
+#hier .it.hn{height:calc(16px*var(--hs));font-size:calc(10px*var(--hs))}
+#hier .it.hz{height:0}
+
+/* ===== сплиттер Project должен работать и в Animation ===== */
+#app{grid-template-rows:minmax(80px,1fr) var(--bs) var(--bv)!important}
+#app:not(.pc) #s3{display:block!important;visibility:visible!important;pointer-events:auto!important}
+#s3{touch-action:none}
+
+/* ===== Inspector: спокойный вид — карточки, сворачиваемые секции, цветные оси X/Y/Z ===== */
+#ins{--ibg:#232528;--icard:#2e3136;--ifld:#212327;--ibd:#3b3f45;--imut:#8e949d;--iac:#5aa0e0;--ix:#ee6b6e;--iy:#6fcf7f;--iz:#5aa0e0;
+  background:var(--ibg);padding:8px;scrollbar-width:thin;scrollbar-color:#40444b transparent}
+#ins::-webkit-scrollbar{width:8px}
+#ins::-webkit-scrollbar-thumb{background:#40444b;border-radius:4px}
+#ins>.e{padding:48px 16px;text-align:center;color:var(--imut)}
+
+#ins .sec{background:var(--icard);border:1px solid var(--ibd);border-radius:10px;padding:8px 10px;margin:0 0 8px}
+#ins .sec:has(>.sh){padding:0 10px 8px}
+#ins .sh{margin:0 -10px 6px;padding:8px 10px;justify-content:flex-start;align-items:center;gap:6px;font-weight:600;color:#eceff3;cursor:pointer;border-radius:9px 9px 0 0}
+#ins .sh:hover{background:#ffffff08}
+#ins .sh::before{content:'';flex:none;width:5px;height:5px;margin:0 3px 3px 1px;border-right:2px solid var(--imut);border-bottom:2px solid var(--imut);transform:rotate(45deg);transition:transform .15s}
+#ins .sec.cl{padding-bottom:0}
+#ins .sec.cl>.sh{margin-bottom:0;border-radius:9px}
+#ins .sec.cl>.sh::before{transform:rotate(-45deg);margin:0 3px 0 0}
+#ins .sec.cl>*:not(.sh){display:none}
+
+#ins .r{gap:6px;margin:6px 0;min-height:26px}
+#ins .l{width:74px;color:var(--imut);line-height:14px}
+#ins .kv{color:#cfd3d8}
+
+/* поля */
+#ins input[type=number],#ins input[type=text]{background:var(--ifld);border:1px solid transparent;border-radius:6px;padding:4px 7px;height:26px;color:#e8eaed;outline:0;font:inherit;transition:border-color .12s,box-shadow .12s}
+#ins input[type=text]:hover{border-color:var(--ibd)}
+#ins input[type=text]:focus{border-color:var(--iac);box-shadow:0 0 0 2px #5aa0e033}
+#ins input:disabled{opacity:.5}
+#ins input[type=number]{-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+#ins input[type=number]::-webkit-inner-spin-button,#ins input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+#ins .f{background:var(--ifld);border:1px solid transparent;border-radius:6px;transition:border-color .12s,box-shadow .12s}
+#ins .f:hover{border-color:var(--ibd)}
+#ins .f:focus-within{border-color:var(--iac);box-shadow:0 0 0 2px #5aa0e033}
+#ins .f i{flex:none;width:20px;padding:0 0 0 2px;text-align:center;font-weight:700;line-height:24px;color:var(--imut)}
+#ins .f i[data-d=x],#ins .f i[data-d=rx],#ins .f i[data-d=sx]{color:var(--ix)}
+#ins .f i[data-d=y],#ins .f i[data-d=ry],#ins .f i[data-d=sy]{color:var(--iy)}
+#ins .f i[data-d=r]{color:var(--iz)}
+#ins .f input[type=number]{background:transparent;border:0;box-shadow:none;padding:0 6px 0 0;height:24px}
+#ins select{background:var(--ifld);border:1px solid transparent;border-radius:6px;height:26px;color:inherit;padding:0 6px;flex:1;min-width:0;max-width:none}
+#ins input[type=checkbox]{accent-color:var(--iac)}
+
+/* шапка объекта: переключатель Active + крупное имя */
+#ins .sec.ohd{display:flex;align-items:center;gap:10px;padding:10px}
+#ins .ohd input[type=text]{background:transparent;font-size:14px;font-weight:600;padding:4px 6px;height:30px}
+#ins .ohd input[type=text]:hover,#ins .ohd input[type=text]:focus{background:var(--ifld)}
+#ins input[data-act]{-webkit-appearance:none;appearance:none;width:32px;height:18px;margin:0;flex:none;border-radius:9px;background:#464b53;position:relative;cursor:pointer;transition:background .15s}
+#ins input[data-act]::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+#ins input[data-act]:checked{background:var(--iac)}
+#ins input[data-act]:checked::after{transform:translateX(14px)}
+#ins input[data-act]:focus-visible{outline:2px solid var(--iac);outline-offset:2px}
+
+/* спрайт, цвет, альфа */
+#ins .slot{display:flex;align-items:center;background:var(--ifld);border:1px dashed #50555d;border-radius:6px;padding:0 8px;height:26px;line-height:16px;color:#cfd3d8;transition:border-color .12s,background .12s}
+#ins .slot:hover{border-color:var(--iac)}
+#ins .slot.o{outline:0;border-style:solid;border-color:var(--iac);background:#5aa0e022}
+#ins input[type=color]{width:44px;height:26px;padding:2px;background:var(--ifld);border:1px solid var(--ibd);border-radius:6px;cursor:pointer}
+#ins input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+#ins input[type=color]::-webkit-color-swatch{border:0;border-radius:4px}
+#ins input[type=range]{accent-color:var(--iac);height:20px;margin:0}
+#ins [data-av]{color:var(--imut);text-align:right;font-variant-numeric:tabular-nums}
+
+/* кнопки */
+#ins button{background:#3a3e45;border:1px solid #4a4f57;border-radius:6px;padding:4px 10px;color:#e3e6ea;transition:background .12s,border-color .12s}
+#ins button:hover{background:#454a52;border-color:#5a606a}
+#ins button:focus-visible{outline:2px solid var(--iac);outline-offset:1px}
+#ins .sh button{margin-left:auto;background:transparent;border:0;color:var(--imut);padding:0 6px;height:20px;line-height:20px}
+#ins .sh button:hover{background:#ee6b6e26;color:#ff8a8d}
+#ins .sec:has(>[data-add]){background:none;border:0;padding:0;margin-top:4px}
+#ins [data-add]{width:100%;height:32px;background:none;border:1px dashed #555a62;color:var(--imut);border-radius:8px}
+#ins [data-add]:hover{border-color:var(--iac);color:#e8f2fd;background:#5aa0e014}
+@media (prefers-reduced-motion:reduce){#ins *,#ins *::before,#ins *::after{transition:none!important}}
+
+/* ===== v10: выбранный объект в Hierarchy горит своим цветом, но ярче; Inspector красится в цвет выбранного объекта ===== */
+#hier .it.s,#hier .it.s:hover{background-color:hsl(var(--h,210),68%,40%);
+  box-shadow:inset 4px 0 0 hsl(var(--h,210),100%,80%),inset 0 0 18px hsl(var(--h,210),100%,66%,.55),inset 0 1px 0 hsl(var(--h,210),90%,70%,.6),inset 0 -1px 0 hsl(var(--h,210),90%,70%,.6)}
+#hier .it.s .ico{color:hsl(var(--h,210),100%,92%);filter:drop-shadow(0 0 4px hsl(var(--h,210),100%,70%))}
+#hier .it.s .nm{color:#fff;text-shadow:0 0 8px hsl(var(--h,210),100%,75%,.7)}
+#hier .it.s .hwt{color:#fff}
+
+#p3.oc{border-color:hsl(var(--oh),70%,48%);box-shadow:inset 0 0 0 1px hsl(var(--oh),75%,50%,.7)}
+#p3.oc>.ph{background:hsl(var(--oh),45%,26%);color:#fff}
+#p3.oc #ins{--ibg:hsl(var(--oh),32%,14%);--icard:hsl(var(--oh),28%,20%);--ifld:hsl(var(--oh),34%,11%);--ibd:hsl(var(--oh),32%,31%);--iac:hsl(var(--oh),85%,64%);--imut:hsl(var(--oh),14%,68%);
+  scrollbar-color:hsl(var(--oh),30%,35%) transparent}
+#p3.oc #ins::-webkit-scrollbar-thumb{background:hsl(var(--oh),30%,35%)}
+#p3.oc #ins .sec.ohd{background:hsl(var(--oh),52%,30%);border-color:hsl(var(--oh),70%,50%);box-shadow:0 0 14px hsl(var(--oh),90%,60%,.28)}
+#p3.oc #ins button{background:hsl(var(--oh),22%,27%);border-color:hsl(var(--oh),25%,38%)}
+#p3.oc #ins button:hover{background:hsl(var(--oh),26%,33%);border-color:hsl(var(--oh),30%,48%)}
+#p3.oc #ins .sh:hover{background:#ffffff0d}
+
+/* ===== v10: окно Animation — проще и понятнее: цвет = цвет редактируемого объекта ===== */
+#anm{--oh:210;background:#1b1d21;border-top:2px solid hsl(var(--oh),70%,50%);transition:border-color .2s}
+#anm.rec{box-shadow:inset 0 0 0 1px #d33,0 -2px 14px #d333;border-top-color:#e44}
+#tl-bar{background:#16181c;border-bottom:1px solid #000;gap:6px 10px;padding:6px 10px}
+/* группы без рамок и теней — просто сгруппированные кнопки */
+#tl-bar .grp{background:none;border:0;box-shadow:none;padding:0 8px 0 0;border-right:1px solid #2a2d33;border-radius:0}
+#tl-bar .grp:last-child{border-right:0}
+#tl-bar button{background:#2b2e34;border:1px solid #000;box-shadow:none}
+#tl-bar button:hover:not(:disabled){background:#383c44}
+#tl-bar #tl-key{background:hsl(var(--oh),45%,32%)}#tl-bar #tl-key:hover{background:hsl(var(--oh),50%,40%)}
+#tl-bar #tl-gh{background:#2b2e34}#tl-bar #tl-gh.on{background:linear-gradient(135deg,#2f7fd0,#c24bd6);color:#fff;box-shadow:0 0 10px #b04be066}
+/* плашка «что редактируем» */
+#tl-who{flex:0 0 100%;display:flex;align-items:center;gap:8px;padding:5px 10px;margin:-2px -4px 2px;border-radius:6px;background:linear-gradient(90deg,hsl(var(--oh),55%,26%),hsl(var(--oh),30%,17%) 70%);border:1px solid hsl(var(--oh),60%,40%);min-height:26px;box-sizing:border-box;overflow:hidden;white-space:nowrap}
+#tl-who .wd{flex:none;width:10px;height:10px;border-radius:50%;background:hsl(var(--oh),95%,68%);box-shadow:0 0 10px hsl(var(--oh),100%,65%)}
+#tl-who .wl{color:hsl(var(--oh),20%,72%);font-size:11px}
+#tl-who .wn,#tl-who .wc{color:#fff;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis}
+#tl-who .wc{color:hsl(var(--oh),90%,85%)}
+#tl-who .ws{color:hsl(var(--oh),30%,60%)}
+#tl-who .wr{margin-left:auto;font-style:normal;color:#ff7a7a;font-weight:700;animation:wblink 1.2s ease-in-out infinite}
+@keyframes wblink{50%{opacity:.45}}
+/* список свойств и таймлайн: один спокойный цвет, выбранная строка — цветом объекта */
+#tl-lw{background:#1f2125}#tl-lh{background:#16181c;color:#9aa1ab}
+.tg{background:#17191d;box-shadow:inset 3px 0 hsl(var(--oh),70%,55%)}.tg.on{background:hsl(var(--oh),40%,20%);box-shadow:inset 3px 0 hsl(var(--oh),90%,70%)}
+.tp:nth-child(odd){background:#222428}.tp:nth-child(even){background:#26292e}
+.tp.s,.tp.s:hover{background:hsl(var(--oh),45%,28%);box-shadow:inset 3px 0 hsl(var(--oh),90%,70%)}
+#tl-cv,#tl-body,#tl-empty{background:#181a1e}
+@media (prefers-reduced-motion:reduce){#tl-who .wr{animation:none}}
+
+/* ===== v13: окно Animation — проще, крупнее, дружелюбнее; вкладка Animation = переключатель ===== */
+/* вкладки Animator / Animation убраны из шапки сцены — они включаются в меню Window */
+/* вкладка окна видна, только если у него стоит галочка в меню Window */
+.tb[data-tab="anim"]:not(.en),.tb[data-tab="clip"]:not(.en){display:none}
+/* меню Window */
+#mbar .mbw{background:transparent;border:0;border-radius:2px;padding:3px 10px}
+#mbar .mbw:hover,#mbar .mbw.on{background:#4a4a4a}
+#wmenu{position:fixed;display:none;z-index:50;min-width:230px;padding:3px 0;background:#2b2b2b;border:1px solid #111;box-shadow:0 4px 12px #000a}
+#wmenu .wi{display:flex;align-items:center;gap:8px;padding:6px 14px 6px 8px;cursor:default;font-size:13px}
+#wmenu .wi:hover{background:var(--a)}
+#wmenu .wk{flex:none;width:16px;text-align:center;color:#7fd99a;font-weight:700}
+#wmenu .wn2{flex:1}
+#wmenu .wi i{font-style:normal;color:#8b929d;font-size:11px}
+
+/* само окно */
+#anm{height:var(--ah,420px);min-height:230px;max-height:88%;font-size:13px;background:#1b1d21;border-top:2px solid #3a3f48}
+#anm.rec{box-shadow:inset 0 0 0 1px #c0392b;border-top-color:#c0392b}
+#s5{height:6px;background:#0e0e0e}
+
+/* панель инструментов */
+#anm #tl-bar{gap:10px 16px;padding:10px 14px;background:#22252a;border-bottom:1px solid #000;align-items:center}
+#anm #tl-bar .grp{display:flex;align-items:center;gap:6px;padding:0 16px 0 0;background:none;border:0;border-right:1px solid #343840;border-radius:0;box-shadow:none}
+#anm #tl-bar .grp.g-view{border-right:0;padding-right:0}
+#anm #tl-bar .grow{flex:1}
+#anm #tl-bar .bi{color:#9aa1ab;font-size:16px}
+#anm #tl-bar button{height:32px;padding:0 14px;font-size:13px;line-height:30px;border-radius:6px;background:#30343b;border:1px solid #121418;color:#e8eaee;box-shadow:none}
+#anm #tl-bar button:hover:not(:disabled){background:#3d424b}
+#anm #tl-bar button.ib{min-width:36px;padding:0 8px;font-size:15px}
+#anm #tl-bar button.on{background:#3d424b;box-shadow:inset 0 0 0 1px #6b7380}
+#anm #tl-bar select,#anm #tl-bar input[type=text],#anm #tl-bar input[type=number]{height:32px;font-size:13px;padding:0 9px;border-radius:6px;background:#15171a;border:1px solid #000;box-sizing:border-box}
+#anm #tl-bar select{max-width:230px;min-width:130px}
+#anm #tl-bar input[type=text]{width:160px}
+#anm #tl-bar input[type=number]{width:72px}
+#anm #tl-bar label{display:flex;align-items:center;gap:6px;color:#c3c8d0}
+#anm #tl-bar .tm em{font-style:normal;color:#8b929d}
+#anm #tl-bar #tl-f{color:#8b929d;min-width:64px}
+/* три главных действия — заметные и понятные по цвету */
+#anm #tl-bar #tl-pl{background:#2e6b43!important}#anm #tl-bar #tl-pl:hover:not(:disabled){background:#3a8453!important}
+#anm #tl-bar #tl-key{background:#2c5d87}#anm #tl-bar #tl-key:hover:not(:disabled){background:#3873a6}
+#anm #tl-bar #tl-rec.on{background:#c0392b!important;color:#fff}
+#anm #tl-bar #tl-gh{background:#30343b;box-shadow:none}
+#anm #tl-bar #tl-gh.on{background:#4a4170;color:#fff;box-shadow:none}
+
+/* дополнительные настройки — спрятаны за ⚙ */
+#tl-set{display:none;flex:0 0 100%;align-items:center;gap:8px 22px;flex-wrap:wrap;padding:9px 12px;border-radius:6px;background:#181a1e;color:#c3c8d0}
+#anm.set #tl-set{display:flex}
+#tl-set b#tl-len{color:#fff;font-weight:600;margin-left:4px}
+#tl-set .lb{color:#c3c8d0}
+
+/* плашка «кого анимируем» — спокойная, без свечения */
+#anm #tl-who{flex:0 0 100%;display:flex;align-items:center;gap:8px;margin:0;padding:7px 12px;min-height:34px;border:0;border-left:4px solid hsl(var(--oh),70%,55%);border-radius:6px;background:hsl(var(--oh),22%,19%);font-size:13px;box-sizing:border-box;overflow:hidden;white-space:nowrap}
+#anm #tl-who .wd{display:none}
+#anm #tl-who .wl{color:#9aa1ab;font-size:12px}
+#anm #tl-who .wn,#anm #tl-who .wc{color:#fff;font-size:14px;font-weight:600}
+#anm #tl-who .wr{margin-left:auto;color:#ff8a80;font-weight:600;animation:none}
+
+/* список свойств и таймлайн */
+#anm #tl-lw{width:310px;background:#1f2125;border-right:1px solid #000}
+#anm #tl-lh{height:28px;padding:6px 12px;background:#181a1e;color:#9aa1ab;font-weight:600;letter-spacing:0}
+#anm .tg,#anm .tp{font-size:13.5px}
+#anm .tp input[type=number]{width:70px}
+#anm #tl-empty{font-size:15px;color:#9aa1ab;gap:8px}
+#anm #tl-empty .sub{font-size:13px;color:#7d848f;max-width:360px;text-align:center}
+
+/* ===== v17: окно Animation целиком в оттенке выбранного объекта (--oh ставит animfx.js = цвет уровня в Hierarchy) ===== */
+#anm{--oh:210;background:hsl(var(--oh),22%,11%);border-top:3px solid hsl(var(--oh),75%,52%);box-shadow:0 -6px 22px hsl(var(--oh),80%,50%,.16);transition:border-color .2s,background .2s}
+#anm.rec{box-shadow:inset 0 0 0 1px #c0392b,0 -4px 16px #c0392b44;border-top-color:#e04a3a}
+#anm #tl-bar{background:linear-gradient(180deg,hsl(var(--oh),32%,19%),hsl(var(--oh),30%,14%));border-bottom:1px solid hsl(var(--oh),45%,8%);box-shadow:inset 0 1px 0 hsl(var(--oh),45%,30%,.5)}
+#anm #tl-bar .grp{border-right:1px solid hsl(var(--oh),25%,28%)}
+#anm #tl-bar .bi,#anm #tl-bar .lb,#anm #tl-bar label{color:hsl(var(--oh),18%,74%)}
+#anm #tl-bar #tl-f,#anm #tl-bar .tm em{color:hsl(var(--oh),16%,64%)}
+#anm #tl-bar button{background:hsl(var(--oh),24%,25%);border:1px solid hsl(var(--oh),35%,9%);color:#f2f5fa;border-radius:7px;box-shadow:inset 0 1px 0 hsl(var(--oh),30%,38%,.45)}
+#anm #tl-bar button:hover:not(:disabled){background:hsl(var(--oh),30%,33%)}
+#anm #tl-bar button.on{background:hsl(var(--oh),38%,34%);box-shadow:inset 0 0 0 1px hsl(var(--oh),70%,60%)}
+#anm #tl-bar select,#anm #tl-bar input[type=text],#anm #tl-bar input[type=number]{background:hsl(var(--oh),30%,9%);border:1px solid hsl(var(--oh),30%,26%);color:#eef2f8;border-radius:7px}
+#anm #tl-bar select:focus,#anm #tl-bar input:focus{outline:0;border-color:hsl(var(--oh),85%,62%);box-shadow:0 0 0 2px hsl(var(--oh),85%,60%,.28)}
+#anm #tl-bar #tl-key{background:hsl(var(--oh),62%,38%)}#anm #tl-bar #tl-key:hover:not(:disabled){background:hsl(var(--oh),68%,46%)}
+#anm #tl-bar #tl-pl{background:hsl(var(--oh),45%,30%)!important}#anm #tl-bar #tl-pl:hover:not(:disabled){background:hsl(var(--oh),55%,40%)!important}
+#anm #tl-bar #tl-gh{background:hsl(var(--oh),24%,25%)}#anm #tl-bar #tl-gh.on{background:hsl(var(--oh),55%,38%);box-shadow:0 0 10px hsl(var(--oh),90%,60%,.35)}
+#anm #tl-bar #tl-rec.on{background:#c0392b!important;color:#fff}
+#anm #tl-set{background:hsl(var(--oh),30%,10%);border:1px solid hsl(var(--oh),28%,22%);color:hsl(var(--oh),16%,78%)}
+#anm #tl-set .lb{color:hsl(var(--oh),16%,78%)}
+#anm #tl-who{background:linear-gradient(90deg,hsl(var(--oh),55%,27%),hsl(var(--oh),32%,17%) 75%);border-left:5px solid hsl(var(--oh),85%,62%);box-shadow:0 0 16px hsl(var(--oh),90%,55%,.18)}
+#anm #tl-who .wl{color:hsl(var(--oh),22%,76%)}
+#anm #tl-who .wc{color:hsl(var(--oh),95%,86%)}
+#anm #tl-who .ws{color:hsl(var(--oh),30%,62%)}
+#anm #tl-lw{background:hsl(var(--oh),24%,13%);border-right:1px solid hsl(var(--oh),40%,6%)}
+#anm #tl-lh{background:hsl(var(--oh),30%,10%);color:hsl(var(--oh),30%,76%);border-bottom:1px solid hsl(var(--oh),40%,6%)}
+#anm .tg{background:hsl(var(--oh),30%,16%);color:#f1f4f9;box-shadow:inset 3px 0 hsl(var(--oh),65%,50%);border-bottom:1px solid hsl(var(--oh),40%,7%)}
+#anm .tg.on{background:hsl(var(--oh),45%,25%);box-shadow:inset 4px 0 hsl(var(--oh),90%,68%)}
+#anm .tg small{background:hsl(var(--oh),28%,24%);color:hsl(var(--oh),20%,80%)}
+#anm .ic,#anm .tg .ic{color:hsl(var(--oh),30%,68%)}
+#anm .tp{border-bottom:1px solid hsl(var(--oh),30%,10%)}
+#anm .tp:nth-child(odd){background:hsl(var(--oh),20%,14.5%)}
+#anm .tp:nth-child(even){background:hsl(var(--oh),20%,17%)}
+#anm .tp:hover{background:hsl(var(--oh),26%,22%)}
+#anm .tp.s,#anm .tp.s:hover{background:hsl(var(--oh),48%,29%);box-shadow:inset 3px 0 hsl(var(--oh),90%,70%)}
+#anm .tp input[type=number]{background:hsl(var(--oh),30%,8%);border:1px solid hsl(var(--oh),30%,24%);color:#eef2f8}
+#anm .tp button{background:hsl(var(--oh),22%,26%)}#anm .tp button:hover{background:hsl(var(--oh),30%,36%)}
+#anm .tp .kb{color:hsl(var(--oh),18%,52%)}#anm .tp .kb.on{color:hsl(var(--oh),95%,72%)}
+#anm #tl-cv,#anm #tl-body{background:hsl(var(--oh),24%,10.5%)}
+#anm #tl-empty{background:hsl(var(--oh),24%,10.5%);color:hsl(var(--oh),18%,70%)}
+#anm #tl-empty .sub{color:hsl(var(--oh),14%,56%)}
+#anm ::-webkit-scrollbar-thumb{background:hsl(var(--oh),30%,32%)}
+#anm *{scrollbar-color:hsl(var(--oh),30%,32%) transparent}
+#s5{background:hsl(var(--oh,210),30%,7%)}
+
+/* зазор под окном Scene/Animation, пока Project свёрнут: внизу экрана остаётся свободная полоса, и таймлайн не упирается в зону вызова Project */
+@property --bg{syntax:'<length>';inherits:true;initial-value:0px}
+#app{--bg:0px;grid-template-rows:minmax(80px,1fr) var(--bs) var(--bv) var(--bg)!important;
+  transition:--bv .3s cubic-bezier(.2,.8,.2,1),--bs .3s cubic-bezier(.2,.8,.2,1),--bg .3s cubic-bezier(.2,.8,.2,1)}
+#app.dr{transition:none}
+#app.pc{--bg:28px}
+
+/* Animation: сворачиваемые группы объектов (стрелка как в Hierarchy) */
+#anm .tg .ic.hwt{width:20px;flex:none;text-align:center;cursor:pointer;font-size:14px;color:#d0d4dc;border-radius:4px;line-height:22px}
+#anm .tg .ic.hwt:hover{background:#ffffff22;color:#fff}
+#tl-lh{display:flex;align-items:center;justify-content:space-between}
+#tl-lh .lhb{display:flex;gap:4px}
+#tl-lh .lhb button{padding:0 6px;min-width:0;height:20px;line-height:18px;font-size:11px}
+
+/* ===== Animation: компактная шапка в один ряд (баннер «Вы анимируете» убран, ⚙ — всплывающая панель, не занимает высоту) ===== */
+#anm #tl-who{display:none!important}
+#anm #tl-bar{position:relative;display:flex;flex-wrap:nowrap;align-items:center;gap:6px;padding:4px 8px;min-height:0;overflow:visible}
+#anm #tl-bar .grp{flex:none;gap:4px;padding:0 8px 0 0}
+#anm #tl-bar .grp.g-clip{flex:1 1 220px;min-width:110px;max-width:340px}
+#anm #tl-bar .grp.g-clip select{flex:1 1 90px;min-width:50px;max-width:none;width:auto}
+#anm #tl-bar .grp.g-clip input[type=text]{flex:1 1 70px;min-width:40px;width:auto}
+#anm #tl-bar .grp.g-view{padding-right:0;border-right:0}
+#anm #tl-bar .grow{flex:1 1 0;min-width:0}
+#anm #tl-bar button{height:26px;padding:0 9px;font-size:12px;line-height:24px;border-radius:5px}
+#anm #tl-bar button.ib{min-width:28px;padding:0 5px;font-size:13px}
+#anm #tl-bar select,#anm #tl-bar input[type=text],#anm #tl-bar input[type=number]{height:26px;font-size:12px;padding:0 6px;border-radius:5px}
+#anm #tl-bar input[type=number]{width:58px}
+#anm #tl-bar #tl-f{min-width:0;font-size:11px;white-space:nowrap}
+#anm #tl-bar .bi{font-size:14px}
+#anm #tl-set{position:absolute;right:8px;top:calc(100% + 2px);z-index:40;flex:none;flex-wrap:nowrap;white-space:nowrap;box-shadow:0 8px 24px #000a}
+
+/* Animation: миниатюра спрайта объекта у счётчика ключей */
+#anm .tg .gth{width:22px;height:22px;flex:none;border-radius:4px;border:1px solid #0008;background:repeating-conic-gradient(#3b3f46 0 25%,#4a4f58 0 50%) 0 0/8px 8px}
+#anm .tg .gth.no{display:none}
+
+/* ===== Animation: чуть возвращаем вид первой версии (цветной акцент объекта, чип с именем, чуть крупнее кнопки) — всё ещё в один ряд ===== */
+#anm #tl-bar{gap:8px;padding:6px 10px;border-top:2px solid hsl(var(--oh),70%,50%)}
+#anm #tl-bar button{height:28px;line-height:26px;padding:0 11px;font-size:13px;border-radius:6px}
+#anm #tl-bar button.ib{min-width:32px;padding:0 7px;font-size:14px}
+#anm #tl-bar select,#anm #tl-bar input[type=text],#anm #tl-bar input[type=number]{height:28px;font-size:13px;border-radius:6px}
+#anm #tl-bar .grp{gap:5px;padding:0 10px 0 0}
+/* баннер «Вы анимируете…» — одним компактным чипом в начале ряда: цветная точка + имя объекта */
+#anm #tl-who{display:flex!important;flex:0 1 auto;min-width:0;max-width:150px;height:28px;min-height:0;margin:0;padding:0 10px;gap:7px;
+  border:0;border-left:4px solid hsl(var(--oh),80%,60%);border-radius:6px;background:hsl(var(--oh),30%,16%);box-shadow:none;align-items:center;overflow:hidden}
+#anm #tl-who .wd{display:block;flex:none;width:8px;height:8px}
+#anm #tl-who .wl,#anm #tl-who .ws,#anm #tl-who .wc,#anm #tl-who .wr{display:none}
+#anm #tl-who .wn{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#anm.rec #tl-who{box-shadow:inset 0 0 0 1px #c0392b;background:hsl(0,35%,18%)}
+
+/* Animation: кнопка «Добавить анимацию» в пустом состоянии */
+#anm #tl-new{margin-top:8px;height:34px;padding:0 20px;font-size:14px;font-weight:600;color:#fff;border:1px solid #000;border-radius:7px;cursor:pointer;
+  background:hsl(var(--oh),55%,34%);box-shadow:inset 0 1px 0 hsl(var(--oh),60%,50%,.5)}
+#anm #tl-new:hover{background:hsl(var(--oh),62%,42%)}
+
+/* ===== v40: убрана кнопка «◆◆ Всем»; имя клипа — один раз (список + ✎ для переименования); список свойств шире и тянется за правый край ===== */
+#anm #tl-lw{width:400px;min-width:220px;max-width:70%;position:relative}
+#anm .tp .tn2,#anm .tg .gn{min-width:90px}
+#anm .tp input[type=number]{width:74px}
+#anm .tp .slot{width:110px}
+#tl-rs{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:30}
+#tl-rs:hover,#tl-rs.on{background:hsl(var(--oh,210),80%,55%,.55)}
+#anm #tl-bar .grp.g-clip.ed select{display:none}
+#anm #tl-bar .grp.g-clip:not(.ed) input[type=text]{display:none}
+#anm #tl-bar .grp.g-clip{flex:1 1 260px;max-width:420px}
+#tl-ren{padding:0 7px!important;min-width:0!important}
+
+/* ===== v41: двойной Inspector (ассет сверху, прежний объект снизу — ближе к Project) + Set Native Size ===== */
+#ins.sp2{padding:0!important;overflow:hidden!important}
+#ins .isplit{position:absolute;inset:0;display:flex;flex-direction:column;min-height:0}
+#ins .ipa,#ins .ipo{flex:1 1 0;min-height:0;overflow:auto;padding:8px 8px 2px}
+#ins .ipo{border-top:2px solid var(--iac,#5aa0e0);background:var(--ibg,transparent);padding-top:0}
+#ins .ipa::-webkit-scrollbar,#ins .ipo::-webkit-scrollbar{width:8px}
+#ins .ipa::-webkit-scrollbar-thumb,#ins .ipo::-webkit-scrollbar-thumb{background:#40444b;border-radius:4px}
+#ins .ipt{position:sticky;top:0;z-index:5;display:flex;align-items:baseline;gap:8px;margin:0 -8px 6px;padding:5px 10px;background:var(--icard,#2e3136);border-bottom:1px solid var(--ibd,#3b3f45);font-weight:700;color:#eceff3;white-space:nowrap;overflow:hidden}
+#ins .ipt span{overflow:hidden;text-overflow:ellipsis}
+#ins .ipt small{font-weight:400;color:var(--iac,#5aa0e0);overflow:hidden;text-overflow:ellipsis}
+
+/* ===== v42: узор уровня (levelfx.js): плитка + «печать» символа на фоне строк Hierarchy, Inspector и списка свойств Animation ===== */
+#hier .it{position:relative;z-index:0}
+#hier .it::after{content:'';position:absolute;inset:0;z-index:-1;pointer-events:none;background-repeat:no-repeat,repeat;background-position:right 10px center,0 0;background-size:auto 78%,44px 44px}
+/* Inspector */
+#p3.oc>.ph::after{content:var(--osym);font-size:17px;line-height:1;color:hsl(var(--oh),95%,86%);text-shadow:0 0 8px hsl(var(--oh),100%,70%,.7)}
+#p3.oc #ins{--icard:hsl(var(--oh),28%,20%,.86);background-image:var(--ostamp),var(--opat);background-repeat:no-repeat,repeat;background-position:right 12px bottom 10px,0 0;background-size:auto,44px 44px;background-attachment:local,local}
+#p3.oc #ins .ipo{background:transparent}
+#p3.oc #ins .ipt{background:hsl(var(--oh),30%,22%)}
+#p3.oc #ins.sp2{background-attachment:scroll,scroll}
+/* Animation: список свойств */
+#anm.has #tl-lw{background-image:var(--ostamp),var(--opat);background-repeat:no-repeat,repeat;background-position:right 14px bottom 14px,0 0;background-size:auto,44px 44px}
+#anm.has .tp:nth-child(odd){background:hsl(var(--oh),20%,14.5%,.78)}
+#anm.has .tp:nth-child(even){background:hsl(var(--oh),20%,17%,.78)}
+#anm.has #tl-lh>span:first-child::after{content:"  " var(--osym);color:hsl(var(--oh),95%,84%)}
+
+/* ===== v43: узор у каждого ОБЪЕКТА свой (levelfx.js ставит --opat/--ostamp на строку) ===== */
+#hier .it::after{background-image:none}   /* узор включается только у объектов текущего уровня — см. levelfx.js */

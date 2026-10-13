@@ -9,6 +9,7 @@ const F=[{id:'entry',name:'Entry',x:40,y:50,c:'#2f8f3f'},{id:'any',name:'Any Sta
 let nid=1,cid=1,V={x:0,y:0},sl=null,link=null,dg=null,pn=null,pl=null,M={x:0,y:0};
 let RMAP=null;   // перепривязка треков клипа к объектам текущего рантайм-плеера (id в клипе -> id реального объекта, -1 = нет такого)
 let cur=null,tm=0,rec=false,pv=false,ksel=new Set(),tsel=new Set(),tv={o:-.05,z:200},sy=0,R=[],ed=null,dz=null;
+const tcol=new Set();   // id объектов, чьи группы свойств свёрнуты в окне Animation (как стрелки ▸/▾ в Hierarchy)
 const W=150,H=34,RUL=28,RH=28,PL=14,MAXT=600;   // PL — левое поле таймлайна (t=0 не прижат к краю); MAXT — предел редактирования, длина клипа считается по последнему ключу
 window.amode='scene';window.tlfocus=false;
 
@@ -47,8 +48,10 @@ function setKey(tr,t,v){
   else{const pr=[...tr.keys].reverse().find(x=>x.t<t);
     k={t,v,i:tr.k=='sprite'?'c':pr?pr.i:'l'};tr.keys.push(k);tr.keys.sort((a,b)=>a.t-b.t)}
   return k}
-function newClip(){
-  let n='New Animation',i=0;while(CL.some(c=>c.name==n))n='New Animation '+(++i);
+// имя клипа по умолчанию — ИмяОбъекта+Анимация0, ИмяОбъекта+Анимация1…; без объекта — «New Animation»
+const CLIP_WORD='Анимация';
+function newClip(base){
+  let n,i=0;if(base){n=base+CLIP_WORD+i;while(CL.some(c=>c.name==n))n=base+CLIP_WORD+(++i)}else{n='New Animation';while(CL.some(c=>c.name==n))n='New Animation '+(++i)}
   const c={id:cid++,name:n,len:1,fps:30,loop:true,tracks:[]};CL.push(c);return c}
 
 /* ---- «позы»: значения свойств, которые даёт клип; запись в объекты с запоминанием исходных значений ---- */
@@ -150,10 +153,10 @@ addEventListener('keydown',e=>{if(window.amode!='anim'||/INPUT|SELECT|TEXTAREA/.
 if(sl.k=='t')delT(sl.id);else if(C.st.some(s=>s.id==sl.id))delS(sl.id);else return;ins_();dr()});
 
 // ---- параметры + play
-function rp(){ap.innerHTML=`<div class="r"><select id="ctl-sel" class="wide" title="Animator Controller">${CTS.map(k=>`<option value="${k.id}" ${k==C?'selected':''}>${esc(k.name)}</option>`).join('')}<option value="__new">＋ New Controller…</option></select><input type="text" id="ctl-name" value="${esc(C.name)}" style="width:84px;flex:none" title="Имя контроллера"></div><div class="r"><b style="flex:1">Parameters</b><button id="pa">+</button><button id="pp">${pl?'■ Stop':'▶ Play'}</button></div>`+(C.pa.map((p,i)=>`<div class="r"><input type="text" data-pn="${i}" value="${esc(p.name)}" style="flex:1"><span>${p.type[0]}</span>${p.type=='Float'||p.type=='Int'?`<input type="number" step="${p.type=='Int'?1:.1}" data-pv="${i}" value="${p.val}" style="width:56px">`:`<input type="checkbox" data-pv="${i}" ${p.val?'checked':''}>`}<button data-px="${i}">✕</button></div>`).join('')||'<div class="e" style="padding:4px">No parameters</div>')}
+function rp(){ap.innerHTML=`<div class="r"><select id="ctl-sel" class="wide" title="Animator Controller">${CTS.map(k=>`<option value="${k.id}" ${k==C?'selected':''}>${esc(k.name)}</option>`).join('')}<option value="__new">＋ New Controller…</option></select><input type="text" id="ctl-name" value="${esc(C.name)}" style="width:84px;flex:none" ${ctlOwner(C)?'readonly title="Имя берётся из имени объекта"':'title="Имя контроллера"'}></div><div class="r"><b style="flex:1">Parameters</b><button id="pa">+</button><button id="pp">${pl?'■ Stop':'▶ Play'}</button></div>`+(C.pa.map((p,i)=>`<div class="r"><input type="text" data-pn="${i}" value="${esc(p.name)}" style="flex:1"><span>${p.type[0]}</span>${p.type=='Float'||p.type=='Int'?`<input type="number" step="${p.type=='Int'?1:.1}" data-pv="${i}" value="${p.val}" style="width:56px">`:`<input type="checkbox" data-pv="${i}" ${p.val?'checked':''}>`}<button data-px="${i}">✕</button></div>`).join('')||'<div class="e" style="padding:4px">No parameters</div>')}
 function useCtl(id){const k=CTS.find(c=>c.id==id);if(!k)return;if(pl)stopPlay();C=k;sl=null;rp();ins_();dr()}
 ap.addEventListener('change',e=>{if(e.target.id!='ctl-sel')return;const v=e.target.value;if(v=='__new')useCtl(newCtl().id);else useCtl(+v)});
-ap.addEventListener('input',e=>{if(e.target.id!='ctl-name')return;C.name=e.target.value||'Controller';const o=$('#ctl-sel').selectedOptions[0];if(o)o.textContent=C.name});
+ap.addEventListener('input',e=>{if(e.target.id!='ctl-name'||ctlOwner(C))return;C.name=e.target.value||'Controller';const o=$('#ctl-sel').selectedOptions[0];if(o)o.textContent=C.name});
 ap.addEventListener('click',e=>{const t=e.target,d=t.dataset;
 if(t.id=='pa'){const r=t.getBoundingClientRect();showMenu(r.left,r.bottom,['Float','Int','Bool','Trigger'].map(ty=>[ty,()=>{const b='New '+ty,k=C.pa.filter(p=>p.name.startsWith(b)).length;C.pa.push({name:k?b+' '+k:b,type:ty,val:ty=='Float'||ty=='Int'?0:false});rp();ins_()}]))}
 if(t.id=='pp')tp();
@@ -256,7 +259,7 @@ if(d.co!==undefined)r.cd[+d.co].op=t.value;
 if(d.cv!==undefined)r.cd[+d.cv].v=parseFloat(t.value)||0});
 ins.addEventListener('click',e=>{if(window.amode!='anim')return;const t=e.target,d=t.dataset,r=curT();
 if(d.oc!==undefined&&sl&&sl.k=='s'){const cp=clipOf(nd(sl.id));if(cp){cur=cp.id;keepCur=true;setTab('clip')}return}
-if(d.nc!==undefined&&sl&&sl.k=='s'){const n=nd(sl.id);if(n){const c=newClip();n.clip=c.id;ins_();dr()}return}
+if(d.nc!==undefined&&sl&&sl.k=='s'){const n=nd(sl.id);if(n){const ow=objs.find(x=>x.animator&&x.animator.ctl==C.id),c=newClip(ow&&ow.name);n.clip=c.id;ins_();dr()}return}
 if(d.dt!==undefined&&r){delT(r.id);ins_();dr()}
 if(d.ac!==undefined&&r){const p=C.pa[0];if(!p)return;r.cd.push({p:p.name,op:p.type=='Float'||p.type=='Int'?'>':'==',v:p.type=='Bool'?1:0});ins_()}
 if(d.cx!==undefined&&r){r.cd.splice(+d.cx,1);ins_()}});
@@ -271,7 +274,7 @@ function rows(){
   const c=cc();if(!c)return[];
   c.tracks=c.tracks.filter(t=>get(t.o)&&PD[t.k]);
   const out=[],ids=[...new Set(c.tracks.map(t=>t.o))];
-  ids.forEach(id=>{const trs=c.tracks.filter(t=>t.o==id).sort((a,b)=>PD[a.k].i-PD[b.k].i);out.push({g:get(id),trs});trs.forEach(tr=>out.push({tr}))});
+  ids.forEach(id=>{const trs=c.tracks.filter(t=>t.o==id).sort((a,b)=>PD[a.k].i-PD[b.k].i),col=tcol.has(id);out.push({g:get(id),trs,col});if(!col)trs.forEach(tr=>out.push({tr}))});
   return out}
 const maxSy=()=>Math.max(0,R.length*RH-(($('#tl-cv').clientHeight||0)-RUL));
 function listScroll(){$('#tl-list').style.transform=`translateY(${-sy}px)`}
@@ -280,13 +283,49 @@ function valHtml(tr,i,v){const p=PD[tr.k];
   if(tr.k=='sprite')return`<div class="slot" data-vs="${i}">${esc(sprLabel(v))}</div>`;
   return`<input type="number" step="${p.st}" ${p.min!=null?`min="${p.min}" max="${p.max}"`:''} data-vi="${i}" value="${rd(v)}">`}
 function rowHtml(tr,i){const p=PD[tr.k];
-  return`<div class="tp${tsel.has(tr)?' s':''}" data-ri="${i}"><span class="ic">${PI[tr.k]||'•'}</span><span class="tn2">${p.n}</span>${valHtml(tr,i,evalTrack(tr,tm))}<button class="kb" data-kb="${i}" title="Поставить / убрать ключ в текущем кадре">◆</button><button data-rm="${i}" title="Удалить свойство">✕</button></div>`}
+  return`<div class="tp${tsel.has(tr)?' s':''}" data-ri="${i}"><span class="ic">${PI[tr.k]||'•'}</span><span class="tn2" title="${p.n}">${p.n}</span>${valHtml(tr,i,evalTrack(tr,tm))}<button class="kb" data-kb="${i}" title="Поставить / убрать ключ в текущем кадре">◆</button><button data-rm="${i}" title="Удалить свойство">✕</button></div>`}
 function buildList(){
   R=rows();const L=$('#tl-list');
-  L.innerHTML=R.map((r,i)=>r.g?`<div class="tg${r.g.id==sel?' on':''}" data-og="${r.g.id}" title="Выбрать объект"><span class="ic">▾</span><span class="gn">${esc(r.g.name)}</span><small>${r.trs.length}</small></div>`:rowHtml(r.tr,i)).join('');
+  L.innerHTML=R.map((r,i)=>r.g?`<div class="tg${r.g.id==sel||(typeof msel!='undefined'&&msel.has(r.g.id))?' on':''}" data-og="${r.g.id}" title="Выбрать объект"><span class="ic hwt" data-ct="${r.g.id}" title="${r.col?'Развернуть':'Свернуть'} (Alt — все объекты)">${r.col?'▸':'▾'}</span><span class="gn" title="${esc(r.g.name)}">${esc(r.g.name)}</span><canvas class="gth" width="44" height="44" data-gth="${r.g.id}"></canvas><small>${r.trs.length}</small></div>`:rowHtml(r.tr,i)).join('');
   sy=clamp(sy,0,maxSy());listScroll();updVals()}
+// миниатюра: спрайт объекта В ТЕКУЩИЙ МОМЕНТ времени (applyPose уже выставил кадр) — меняется вместе с анимацией свойства Sprite
+// у объекта с детьми (GameObject-родитель) — миниатюра ВСЕГО объекта: все видимые спрайты потомков в их текущих позах, вписанные в квадрат
+function compThumb(cv,o,ord){
+  const ids=new Set(subtree(o.id).map(x=>x.id));
+  const it=ord.filter(e=>e.on&&ids.has(e.o.id)&&!e.o.screen&&(e.o.img||e.o.text||e.o.grad));
+  if(!it.length||(it.length==1&&it[0].o===o))return false;
+  const sig='c|'+it.map(e=>e.o.id+':'+e.M.map(v=>Math.round(v*100)).join(',')+(e.o.img?'|'+e.o.img.sprite+'|'+e.o.img.color+'|'+e.o.img.alpha:'')).join(';');
+  cv.classList.remove('no');if(cv.dataset.k===sig)return true;cv.dataset.k=sig;
+  let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+  for(const e of it){const[w,h]=size(e.o);for(const[lx,ly]of[[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]]){const p=apM(e.M,lx,ly);x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)}}
+  const g=cv.getContext('2d'),W=cv.width,H=cv.height,cx=(x0+x1)/2,cy=(y0+y1)/2,k=Math.min((W-6)/Math.max(x1-x0,1e-3),(H-6)/Math.max(y1-y0,1e-3));
+  g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,W,H);
+  for(const e of it){const d=e.o,M=e.M;let im=null;try{im=window.btnView?btnView(d):(d.img||d.text)}catch(_){im=d.img||d.text}
+    const[w,h]=size(d,d.img?im:null);
+    g.save();g.transform(k*M[0],-k*M[1],k*M[2],-k*M[3],W/2+k*(M[4]-cx),H/2-k*(M[5]-cy));g.scale(1,-1);
+    try{
+      if(d.img&&im){g.globalAlpha=im.alpha==null?1:im.alpha;const a=im.sprite!=null&&ast(im.sprite);if(a&&a.img)g.drawImage(tint(a,im.color),-w/2,-h/2,w,h);else{g.fillStyle=im.color||'#fff';g.fillRect(-w/2,-h/2,w,h)}g.globalAlpha=1}
+      else if(d.text&&window.drawText&&im)drawText(g,d.text,im);
+      else if(d.grad&&window.drawGrad)drawGrad(g,d.grad,w,h)}catch(_){}
+    g.restore()}
+  return true}
+function drawThumbs(){
+  const ord=order();
+  $('#tl-list').querySelectorAll('canvas.gth').forEach(cv=>{
+    const o=get(+cv.dataset.gth);if(!o)return;
+    if(compThumb(cv,o,ord))return;
+    let v=null;try{v=window.btnView?btnView(o):o.img}catch(e){v=o.img}
+    const a=o.img&&v&&v.sprite!=null?ast(v.sprite):null,ok=a&&a.img,kind=o.img?'i':o.text?'t':o.grad?'g':o.screen?'s':'n';
+    const key=kind+'|'+(o.img&&v?v.sprite+'|'+v.color+'|'+v.alpha+'|'+(ok?a.img.width:0):'');
+    if(cv.dataset.k===key)return;cv.dataset.k=key;
+    cv.classList.toggle('no',kind=='n');
+    const g=cv.getContext('2d'),W=cv.width,H=cv.height;g.clearRect(0,0,W,H);
+    if(kind=='i'&&v){g.globalAlpha=v.alpha==null?1:v.alpha;
+      if(ok){const im=tint(a,v.color),k=Math.min((W-4)/im.width,(H-4)/im.height);g.drawImage(im,(W-im.width*k)/2,(H-im.height*k)/2,im.width*k,im.height*k)}
+      else{g.fillStyle=v.color||'#fff';g.fillRect(6,6,W-12,H-12)}g.globalAlpha=1}
+    else{g.fillStyle='#d8d8d8';g.font='bold '+Math.round(H*.6)+'px Segoe UI,sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(kind=='t'?'T':kind=='g'?'▤':'▭',W/2,H/2+1)}})}
 function updVals(){
-  const L=$('#tl-list');
+  const L=$('#tl-list');drawThumbs();
   R.forEach((r,i)=>{if(!r.tr)return;const row=L.children[i];if(!row)return;
     const v=evalTrack(r.tr,tm),inp=row.querySelector('[data-vi]'),sp=row.querySelector('[data-vs]'),kb=row.querySelector('.kb');
     if(inp&&document.activeElement!==inp)inp.value=r.tr.k=='color'?colHex(v):rd(v);
@@ -329,7 +368,7 @@ function updHead(){const c=cc(),t=$('#tl-t');if(document.activeElement!==t)t.val
 function lenLbl(){const c=cc(),e=$('#tl-len');if(e)e.textContent=c?rd(c.len)+' с · '+Math.round(c.len*c.fps)+' кадр.':'—'}
 function tbar(){
   const c=cc();
-  ['#tl-name','#tl-pl','#tl-rec','#tl-key','#tl-add','#tl-t','#tl-fps','#tl-loop','#tl-first','#tl-pk','#tl-nk','#tl-last','#tl-del','#tl-fit'].forEach(id=>$(id).disabled=!c);
+  ['#tl-name','#tl-pl','#tl-rec','#tl-key','#tl-add','#tl-t','#tl-fps','#tl-loop','#tl-first','#tl-pk','#tl-nk','#tl-last','#tl-del'].forEach(id=>$(id).disabled=!c);
   const nm=$('#tl-name');if(document.activeElement!==nm)nm.value=c?c.name:'';
   lenLbl();$('#tl-fps').value=c?c.fps:'';$('#tl-t').step=c?1/c.fps:.01;$('#tl-loop').checked=!!(c&&c.loop);
   $('#tl-pl').textContent=pv?'■':'▶';$('#tl-rec').classList.toggle('on',rec);$('#anm').classList.toggle('rec',rec);
@@ -359,7 +398,7 @@ window.animEdit=(o,k,old,v)=>{
   let tr=c.tracks.find(t=>t.o==o.id&&t.k==k);
   if(!tr){
     if(old===v||(typeof v=='number'&&typeof old=='number'&&Math.abs(v-old)<1e-9))return;
-    tr={o:o.id,k,keys:[]};c.tracks.push(tr);
+    tr={o:o.id,k,keys:[]};(c.tracks.push(tr),tcol.delete(tr.o));
     const key=o.id+'.'+k;if(!base.has(key)&&old!==undefined)base.set(key,old);editOwn.add(key);
     if(tm>EPS&&old!==undefined)setKey(tr,0,old);
     setKey(tr,tm,v);buildList();tlDraw();return}
@@ -370,7 +409,7 @@ function addProps(o,list){
   list.forEach(k=>{
     if(c.tracks.some(t=>t.o==o.id&&t.k==k))return;
     if(PD[k].g=='Image'&&!o.img&&!(o.text&&k!='sprite')&&!(o.grad&&k=='alpha'))return;
-    const v=pget(o,k),tr={o:o.id,k,keys:[]};c.tracks.push(tr);setKey(tr,0,v);if(tm>EPS)setKey(tr,tm,v)});
+    const v=pget(o,k),tr={o:o.id,k,keys:[]};(c.tracks.push(tr),tcol.delete(tr.o));setKey(tr,0,v);if(tm>EPS)setKey(tr,tm,v)});
   rebuild();sampleClip()}
 function delKeys(){
   const c=cc();if(!c||!ksel.size)return;
@@ -400,7 +439,7 @@ function pasteKeys(t0){
   KCLIP.keys.forEach(a=>{
     let targets=single&&tsl.length?tsl.filter(tr=>tr.k==a.k):[];
     if(!targets.length){const o=get(a.o);if(!o)return;let tr=c.tracks.find(x=>x.o==a.o&&x.k==a.k);
-      if(!tr){if(pget(o,a.k)===undefined)return;tr={o:a.o,k:a.k,keys:[]};c.tracks.push(tr)}targets=[tr]}
+      if(!tr){if(pget(o,a.k)===undefined)return;tr={o:a.o,k:a.k,keys:[]};(c.tracks.push(tr),tcol.delete(tr.o))}targets=[tr]}
     targets.forEach(tr=>{const t=Math.round((t0+a.dt)*1e4)/1e4;if(t>MAXT){skipped++;return}
       const k=setKey(tr,t,a.v);if(tr.k!='sprite')k.i=a.i;out.push(k)})});
   c.tracks=c.tracks.filter(t=>t.keys.length);
@@ -419,6 +458,50 @@ $('#tl-sel').onchange=e=>{const v=e.target.value;
     if(!ctlClips(C).includes(id)){const k=CTS.find(k=>ctlClips(k).includes(id));if(k){if(pl)stopPlay();C=k;sl=null}}   // клип из другого контроллера — переключаемся на него
     selectClip(id)}};
 $('#tl-name').oninput=e=>{const c=cc();if(!c)return;c.name=e.target.value;fillSel()};
+// ---- у каждого объекта с Animator СВОЙ контроллер (один на объект), его имя всегда = имя объекта (при совпадении — «Имя 2», «Имя 3»…)
+const ctlOwner=k=>!!k&&objs.some(o=>o.animator&&o.animator.ctl==k.id);
+// создать контроллер объекта, если его нет (по требованию: при добавлении компонента Animator или первого клипа)
+function ensureCtl(o){
+  if(!o.animator)o.animator={};
+  let k=CTS.find(c=>c.id==o.animator.ctl);
+  if(!k){
+    k=(C&&!C.st.length&&/^Animator Controller( \d+)?$/.test(C.name)&&!ctlOwner(C))?C:newCtl();   // пустой безымянный контроллер-заготовку переиспользуем
+    o.animator.ctl=k.id}
+  syncCtl();return CTS.find(c=>c.id==o.animator.ctl)}
+// привести контроллеры к имени объектов. Копия объекта (Duplicate / Ctrl+C) ДЕЛИТ контроллер и клипы оригинала — анимации играют и на копии
+// (клип перепривязывается к её детям, см. buildRemap). Отдельный независимый контроллер — кнопка «Duplicate as new controller» (dupCtl).
+function syncCtl(){
+  if(window.playing)return;
+  const owners=new Map();let ch=false;
+  for(const{o}of order()){if(!o.animator)continue;
+    let k=CTS.find(c=>c.id==o.animator.ctl);
+    if(!k){k=newCtl();o.animator.ctl=k.id;ch=true}
+    if(!owners.has(k.id))owners.set(k.id,[]);owners.get(k.id).push(o)}
+  owners.forEach((os,id)=>{const k=CTS.find(c=>c.id==id);
+    if(os.length>1&&os.some(o=>k.name==o.name||k.name.startsWith(o.name+' ')))return;   // общий контроллер: имя оставляем, пока оно совпадает с именем одного из владельцев
+    const nm=ctlName(os[0].name,k);if(k.name!=nm){k.name=nm;ch=true}});
+  if(ch&&window.amode=='anim'){rp();ins_()}}
+// «Duplicate as new controller»: у объекта o появляется СВОЙ контроллер — копия прежнего вместе с КОПИЯМИ всех его клипов.
+// Треки клонов перепривязываются на «такие же» объекты внутри o (по пути из индексов детей), поэтому правки идут только в этот объект.
+function dupCtl(o){
+  const src=o&&o.animator&&CTS.find(k=>k.id==o.animator.ctl);if(!src)return null;
+  if(pl)stopPlay();pvStop();
+  const rm=buildRemap(src,o.id),was=objs.find(x=>x!==o&&x.animator&&x.animator.ctl==src.id),n=newCtl();
+  Object.assign(n,jc(src),{id:n.id,name:n.name});
+  const cmap=new Map(),uniq=nm=>{let r=nm,i=1;while(CL.some(c=>c.name==r))r=nm+' ('+(i++)+')';return r};
+  n.st.forEach(st=>{if(st.clip==null)return;
+    if(!cmap.has(st.clip)){
+      const c0=clip(st.clip);if(!c0){st.clip=null;return}
+      const c=jc(c0);c.id=cid++;
+      c.name=uniq(was&&was.name&&c0.name.startsWith(was.name)?o.name+c0.name.slice(was.name.length):c0.name+' (copy)');
+      c.tracks.forEach(tr=>{if(rm){const r=rm.get(tr.o);if(r!==undefined)tr.o=r}});
+      c.tracks=c.tracks.filter(tr=>tr.o>=0);
+      CL.push(c);cmap.set(st.clip,c.id)}
+    st.clip=cmap.get(st.clip)});
+  o.animator.ctl=n.id;n.name=ctlName(o.name,n);
+  C=n;sl=null;
+  if(window.amode=='anim'){rp();dr();ins_()}else if(window.amode=='clip'){const f=ctlClips(n)[0];if(f!=null)selectClip(f)}
+  return n}
 // имя контроллера объекта: имя объекта, при совпадении — «Имя 2», «Имя 3»…
 const ctlName=(n,except)=>{const b=n||'Animator Controller';let x=b,i=1;while(CTS.some(c=>c!==except&&c.name==x))x=b+' '+(++i);return x};
 // Create New Clip на выбранном объекте: у объекта появляется СВОЙ Animator и ОТДЕЛЬНЫЙ контроллер (даже если Animator есть у родителя).
@@ -426,12 +509,12 @@ const ctlName=(n,except)=>{const b=n||'Animator Controller';let x=b,i=1;while(CT
 const newClipUI=()=>{
   const o=get(sel);let made=false;
   if(o){
+    syncCtl();
     let k=o.animator&&CTS.find(c=>c.id==o.animator.ctl);
-    if(!k){
-      k=(!C.st.length&&!objs.some(x=>x.animator&&x.animator.ctl==C.id))?C:newCtl();        // пустой никем не занятый контроллер переиспользуем
-      k.name=ctlName(o.name,k);o.animator={ctl:k.id};made=true}
+    if(!k){k=ensureCtl(o);made=true}
     if(k!==C){if(pl)stopPlay();C=k;sl=null}}
-  const c=newClip();addClipState(c);selectClip(c.id);if(made)refresh()};
+  const c=newClip(o&&o.name);addClipState(c);selectClip(c.id);if(made)refresh()};
+$('#tl-new').onclick=()=>newClipUI();   // кнопка в пустом окне, когда нет ни одной анимации
 $('#tl-pl').onclick=()=>pvToggle();
 // переходы: в начало / к предыдущему и следующему ключу / в конец (конец = последний ключ)
 const keyTimes=()=>{const c=cc();if(!c)return[];const o=get(sel),trs=tsel.size?[...tsel]:(o&&c.tracks.some(t=>t.o==o.id)?c.tracks.filter(t=>t.o==o.id):c.tracks),s=new Set();trs.forEach(t=>t.keys.forEach(k=>s.add(k.t)));return[...s].sort((a,b)=>a-b)};
@@ -440,29 +523,27 @@ $('#tl-last').onclick=()=>{const c=cc();if(!c)return;pvStop();setTime(c.len)};
 $('#tl-pk').onclick=()=>{const c=cc();if(!c)return;pvStop();const p=keyTimes().filter(t=>t<tm-EPS).pop();setTime(p==null?0:p)};
 $('#tl-nk').onclick=()=>{const c=cc();if(!c)return;pvStop();const n=keyTimes().find(t=>t>tm+EPS);setTime(n==null?tm:n)};
 $('#tl-del').onclick=()=>delKeys();
-$('#tl-fit').onclick=()=>{fitTL();listScroll();tlDraw()};
-let ahPrev=null;   // null — окно обычного размера; иначе строка с прежней высотой ('' — по умолчанию)
-$('#tl-max').onclick=()=>{const sv=$('#sv'),r=sv.getBoundingClientRect();
-  if(ahPrev==null){ahPrev=sv.style.getPropertyValue('--ah')||'';sv.style.setProperty('--ah',Math.max(180,Math.round(r.height-120))+'px');$('#tl-max').textContent='❐'}
-  else{if(ahPrev)sv.style.setProperty('--ah',ahPrev);else sv.style.removeProperty('--ah');ahPrev=null;$('#tl-max').textContent='⛶'}
-  setTimeout(()=>{fitTL();rebuild()},30)};
 $('#tl-rec').onclick=()=>{rec=!rec;tbar()};
 $('#tl-t').onchange=e=>setTime(parseFloat(e.target.value)||0);
 $('#tl-fps').onchange=e=>{const c=cc();if(!c)return;c.fps=clamp(Math.round(parseFloat(e.target.value))||30,1,240);autoLen(c);rebuild()};
 $('#tl-loop').onchange=e=>{const c=cc();if(c)c.loop=e.target.checked};
 $('#tl-key').onclick=()=>{
   const c=cc();if(!c)return;let trs;
-  if(tsel.size)trs=[...tsel];else{const o=get(sel);trs=o&&c.tracks.some(t=>t.o==o.id)?c.tracks.filter(t=>t.o==o.id):c.tracks}
+  if(tsel.size)trs=[...tsel];else{const ids=new Set(selObjs().map(o=>o.id)),mine=c.tracks.filter(t=>ids.has(t.o));trs=mine.length?mine:c.tracks}
   trs.forEach(tr=>{const o=get(tr.o);if(o){const v=pget(o,tr.k);if(v!==undefined)setKey(tr,tm,v)}});rebuild()};
+// объекты, которые сейчас анимируем: все выделенные в Hierarchy (Ctrl/Shift+клик, Ctrl+A) или один выбранный
+const selObjs=()=>(typeof selIds=='function'?selIds():(sel!=null?[sel]:[])).map(get).filter(Boolean);
 $('#tl-add').onclick=e=>{
-  const c=cc(),o=get(sel),r=e.target.getBoundingClientRect();if(!c)return;
-  if(!o)return showMenu(r.left,r.bottom,[['Выберите объект на сцене или в Hierarchy',()=>{}]]);
-  const it=[],has=k=>c.tracks.some(t=>t.o==o.id&&t.k==k);
-  it.push(['Transform ▸ все свойства',()=>addProps(o,PROPS.filter(p=>p.g=='Transform').map(p=>p.k))]);
-  if(o.img)it.push(['Image ▸ Color + Alpha + Sprite',()=>addProps(o,['color','alpha','sprite'])]);
-  if(o.text)it.push(['Text ▸ Color + Alpha',()=>addProps(o,['color','alpha'])]);
-  if(o.grad)it.push(['Gradient ▸ Alpha',()=>addProps(o,['alpha'])]);
-  PROPS.forEach(p=>{if((p.g=='Image'&&!o.img&&!(o.text&&p.k!='sprite')&&!(o.grad&&p.k=='alpha'))||has(p.k))return;it.push([p.g+' ▸ '+p.n,()=>addProps(o,[p.k])])});
+  const c=cc(),os=selObjs(),r=e.target.getBoundingClientRect();if(!c)return;
+  if(!os.length)return showMenu(r.left,r.bottom,[['Выберите объект на сцене или в Hierarchy',()=>{}]]);
+  const n=os.length>1?'  (×'+os.length+')':'',all=(list,f)=>{os.forEach(o=>f&&!f(o)?0:addProps(o,list))};
+  const has=(o,k)=>c.tracks.some(t=>t.o==o.id&&t.k==k),it=[];
+  it.push(['Transform ▸ все свойства'+n,()=>all(PROPS.filter(p=>p.g=='Transform').map(p=>p.k))]);
+  if(os.some(o=>o.img))it.push(['Image ▸ Color + Alpha + Sprite'+n,()=>all(['color','alpha','sprite'],o=>o.img)]);
+  if(os.some(o=>o.text))it.push(['Text ▸ Color + Alpha'+n,()=>all(['color','alpha'],o=>o.text)]);
+  if(os.some(o=>o.grad))it.push(['Gradient ▸ Alpha'+n,()=>all(['alpha'],o=>o.grad)]);
+  const ok=(o,p)=>!((p.g=='Image'&&!o.img&&!(o.text&&p.k!='sprite')&&!(o.grad&&p.k=='alpha'))||has(o,p.k));
+  PROPS.forEach(p=>{if(!os.some(o=>ok(o,p)))return;it.push([p.g+' ▸ '+p.n+n,()=>os.forEach(o=>{if(ok(o,p))addProps(o,[p.k])})])});
   showMenu(r.left,r.bottom,it)};
 
 // предпросмотр клипа (Loop учитывается: без лупа остановится в конце)
@@ -478,8 +559,20 @@ function pvToggle(){
 
 // ---- список свойств (слева)
 const L_=$('#tl-list');
+// кнопки «свернуть / развернуть всё» в шапке списка
+{const lh=$('#tl-lh');lh.innerHTML='<span>Свойства</span><span class="lhb"><button data-acp="copy" title="Копировать анимацию выбранного объекта (и его детей) в текущем клипе">⧉</button><button data-acp="paste" title="Вставить скопированную анимацию в выбранный объект (Shift — со сдвигом позиции)">⎘</button><button data-ctall="1" title="Свернуть все объекты">▸▸</button><button data-ctall="0" title="Развернуть все объекты">▾▾</button></span>';
+ lh.addEventListener('click',e=>{const a=e.target.closest('[data-acp]');if(a){a.dataset.acp=='copy'?copyAnim(sel):pasteAnim(sel,e.shiftKey);return}
+ const b=e.target.closest('[data-ctall]'),c=cc();if(!b||!c)return;
+  const ids=[...new Set(c.tracks.map(x=>x.o))];
+  if(b.dataset.ctall=='1'){ids.forEach(i=>tcol.add(i));c.tracks.forEach(tr=>{tr.keys.forEach(k=>ksel.delete(k));tsel.delete(tr)})}else tcol.clear();
+  rebuild()})}
 L_.addEventListener('click',e=>{
   const t=e.target,c=cc();if(!c)return;
+  const ct=t.closest('[data-ct]');
+  if(ct){const id=+ct.dataset.ct,all=[...new Set(c.tracks.map(x=>x.o))],open=!tcol.has(id);   // open — сейчас развёрнута, значит сворачиваем
+    const ch=e.altKey?all:[id];ch.forEach(i=>{if(open)tcol.add(i);else tcol.delete(i)});
+    for(const i of ch)for(const tr of c.tracks.filter(x=>x.o==i)){tr.keys.forEach(k=>ksel.delete(k));tsel.delete(tr)}   // скрытые ключи и свойства не остаются выделенными
+    rebuild();return}
   const bk=t.closest('[data-kb]'),bx=t.closest('[data-rm]'),sp=t.closest('[data-vs]'),gr=t.closest('[data-og]'),row=t.closest('.tp');
   if(bk){const tr=R[+bk.dataset.kb].tr,k=keyAt(tr,tm);
     if(k){tr.keys.splice(tr.keys.indexOf(k),1);ksel.delete(k);if(!tr.keys.length)c.tracks.splice(c.tracks.indexOf(tr),1)}
@@ -498,6 +591,52 @@ L_.addEventListener('input',e=>{
   setKey(tr,tm,v);sampleClip();updVals();tlDraw()});
 $('#tl-lc').addEventListener('wheel',e=>{e.preventDefault();sy=clamp(sy+(e.deltaY||0),0,maxSy());listScroll();tlDraw()},{passive:false});
 
+
+/* ---- Copy / Paste Animation: дорожки объекта (вместе с детьми) → другой объект с такой же структурой ----
+   Копируются все дорожки текущего клипа, лежащие на объекте и его потомках; потомки запоминаются ПУТЁМ в иерархии
+   (индекс среди детей на каждом уровне), поэтому вставка работает на любую копию с такой же структурой.
+   Вставляются только совпадающие каналы: у цели нет такого объекта / свойства (например Sprite без Image) — канал пропускается. */
+let ACLIP=null;   // {src,name,clip,items:[{p:[путь],k,keys:[{t,v,i}],rest}]}
+const restOf=(o,k)=>{const key=o.id+'.'+k;return base.has(key)?base.get(key):pget(o,k)};   // «покойное» значение (без текущей позы клипа)
+function copyAnim(id){
+  const c=cc(),root=id!=null?get(id):null;
+  if(!c)return flash('Нет открытого клипа');
+  if(!root)return flash('Выберите объект, анимацию которого копировать');
+  const items=[];
+  c.tracks.forEach(tr=>{if(!tr.keys.length)return;const p=pathUnder(root,tr.o),o=get(tr.o);if(!p||!o)return;
+    items.push({p,k:tr.k,keys:tr.keys.map(k=>({t:k.t,v:k.v,i:k.i})),rest:tr.k=='x'||tr.k=='y'?restOf(o,tr.k):null})});
+  if(!items.length)return flash('У «'+root.name+'» нет дорожек в клипе «'+c.name+'»');
+  ACLIP={src:root.id,name:root.name,clip:c.id,items};
+  flash('Анимация «'+root.name+'» скопирована: каналов '+items.length+' · выберите другой объект и нажмите ⎘ (Paste)')}
+// rel — сдвинуть дорожки Position X/Y на разницу позиций цели и источника (чтобы объект не «телепортировался»)
+function pasteAnim(id,rel){
+  let c=cc();const root=id!=null?get(id):null;
+  if(!ACLIP)return flash('Сначала скопируйте анимацию объекта (⧉ Copy)');
+  if(!root)return flash('Выберите объект, в который вставить анимацию');
+  if(!c&&id==sel){newClipUI();c=cc()}   // у объекта ещё нет клипа — создаём ему свой Animator + клип (как «Create New Clip»)
+  if(!c)return flash('Нет открытого клипа');
+  if(root.id==ACLIP.src&&c.id==ACLIP.clip)return flash('Это тот же объект и тот же клип');
+  let ok=0;const skip=[];
+  ACLIP.items.forEach(it=>{
+    const o=walkPath(root,it.p),pn=PD[it.k]?PD[it.k].n:it.k;
+    if(!o)return skip.push(pn+' (нет дочернего объекта)');
+    if(pget(o,it.k)===undefined)return skip.push(o.name+': '+pn+' (нет такого свойства)');
+    const d=rel&&it.rest!=null&&typeof it.rest=='number'?restOf(o,it.k)-it.rest:0;
+    let tr=c.tracks.find(x=>x.o==o.id&&x.k==it.k);
+    if(!tr){tr={o:o.id,k:it.k,keys:[]};c.tracks.push(tr);tcol.delete(o.id)}
+    else if(!base.has(o.id+'.'+it.k)){const old=pget(o,it.k);if(old!==undefined)base.set(o.id+'.'+it.k,old)}
+    tr.keys=it.keys.map(k=>({t:k.t,v:typeof k.v=='number'&&d?rd(k.v+d):k.v,i:k.i}));
+    ok++});
+  if(!ok)return flash('Каналы не совпадают — ничего не вставлено'+(skip.length?': '+skip.slice(0,3).join(', '):''));
+  ksel=new Set();tsel=new Set();rebuild();sampleClip();
+  flash('Вставлено в «'+root.name+'»: '+ok+' из '+ACLIP.items.length+(skip.length?' · пропущено: '+skip.slice(0,3).join(', ')+(skip.length>3?'…':''):''))}
+// ПКМ по объекту в списке свойств
+L_.addEventListener('contextmenu',e=>{
+  const g=e.target.closest&&e.target.closest('[data-og]');if(!g||!cc())return;e.preventDefault();
+  const id=+g.dataset.og,o=get(id);if(!o)return;
+  showMenu(e.clientX,e.clientY,[['Copy Animation  «'+o.name+'»',()=>copyAnim(id)],
+    ...(ACLIP?[['Paste Animation  ← «'+ACLIP.name+'»',()=>pasteAnim(id,false)],['Paste Animation · со сдвигом позиции',()=>pasteAnim(id,true)]]:[])])});
+
 // ---- холст таймлайна
 const tcv=$('#tlc');
 const mp=e=>{const r=tcv.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top}};
@@ -507,10 +646,21 @@ function keyHit(x,y){
   const i=rowAt(y);if(i<0||!R[i].tr)return null;const tr=R[i].tr;let best=null,bd=7;
   tr.keys.forEach(k=>{const d=Math.abs(X(k.t)-x);if(d<=bd){bd=d;best=k}});
   return best?{tr,k:best,i}:null}
+// сводный ромб в строке-группе: все ключи всех дорожек объекта, стоящие в одно время
+// иконка свойства на ключе: в строке свойства — по центру ключа; в строке-группе — «таблетка» со значками всех свойств, чьи ключи стоят в это время
+function keyGlyph(G,x,y,ch,on){G.fillStyle=on?'#fff':'#141414';G.font='10px "Segoe UI Symbol","Segoe UI",sans-serif';G.textAlign='center';G.textBaseline='middle';G.fillText(ch,x,y+.5)}
+function grpTimes(r){const ts=new Map();r.trs.forEach(tr=>tr.keys.forEach(k=>{let e=ts.get(k.t);if(!e)ts.set(k.t,e={on:false,gl:[]});if(ksel.has(k))e.on=true;const g=PI[tr.k]||'•';if(!e.gl.includes(g))e.gl.push(g)}));
+  ts.forEach(e=>{if(e.gl.length>4)e.gl=[...e.gl.slice(0,3),'…']});return ts}
+const pillW=n=>Math.max(18,n*11+6);
+function grpHit(x,y){
+  const i=rowAt(y);if(i<0||!R[i].g)return null;let bt=null,bd=1e9;
+  grpTimes(R[i]).forEach((e,t)=>{const d=Math.abs(X(t)-x);if(d<=pillW(e.gl.length)/2&&d<bd){bd=d;bt=t}});
+  if(bt==null)return null;
+  return{keys:R[i].trs.flatMap(tr=>tr.keys.filter(k=>Math.abs(k.t-bt)<1e-6)),i}}
 const PAD=9;   // отступ ручек растяжения от крайних ключей
 function stBox(){
   if(ksel.size<2)return null;let t0=1e9,t1=-1e9,i0=1e9,i1=-1;
-  R.forEach((r,i)=>{if(!r.tr)return;r.tr.keys.forEach(k=>{if(ksel.has(k)){if(k.t<t0)t0=k.t;if(k.t>t1)t1=k.t;if(i<i0)i0=i;if(i>i1)i1=i}})});
+  R.forEach((r,i)=>{const ks=r.tr?r.tr.keys:r.g&&r.col?r.trs.flatMap(t=>t.keys):null;if(!ks)return;ks.forEach(k=>{if(ksel.has(k)){if(k.t<t0)t0=k.t;if(k.t>t1)t1=k.t;if(i<i0)i0=i;if(i>i1)i1=i}})});
   return i1<0||t1-t0<EPS?null:{t0,t1,i0,i1}}
 function stHit(m){
   const b=stBox();if(!b)return null;
@@ -539,8 +689,11 @@ function tlDraw(){
   if(X(0)>0){G.fillStyle='#0c0c0c';G.fillRect(0,RUL,X(0),h-RUL);G.fillStyle='#555';G.fillRect(Math.round(X(0)),RUL,1,h-RUL)}   // слева от 0 времени нет
   G.fillStyle='#d0402a';G.fillRect(Math.round(xe),RUL,1,h-RUL);
   R.forEach((r,i)=>{const y=RUL+i*RH-sy+RH/2;if(y<RUL-RH/2||y>h+RH/2)return;
-    if(r.tr)r.tr.keys.forEach(k=>{const on=ksel.has(k);shape(G,X(k.t),y,5,k.i);G.fillStyle=on?'#5aa0ff':'#d8d8d8';G.fill();G.lineWidth=1;G.strokeStyle='#000';G.stroke()});
-    else{const ts=new Set();r.trs.forEach(t=>t.keys.forEach(k=>ts.add(k.t)));ts.forEach(t=>{shape(G,X(t),y,4,'l');G.fillStyle='#8a8a8a';G.fill()})}});
+    if(r.tr)r.tr.keys.forEach(k=>{const on=ksel.has(k),x=X(k.t);shape(G,x,y,7,k.i);G.fillStyle=on?'#5aa0ff':'#d8d8d8';G.fill();G.lineWidth=1;G.strokeStyle='#000';G.stroke();keyGlyph(G,x,y,PI[r.tr.k]||'•',on)});
+    else{grpTimes(r).forEach((e,t)=>{const x=X(t),w=pillW(e.gl.length),h=16,l=x-w/2,tp=y-h/2,rr=6;
+      G.beginPath();G.moveTo(l+rr,tp);G.arcTo(l+w,tp,l+w,tp+h,rr);G.arcTo(l+w,tp+h,l,tp+h,rr);G.arcTo(l,tp+h,l,tp,rr);G.arcTo(l,tp,l+w,tp,rr);G.closePath();
+      G.fillStyle=e.on?'#5aa0ff':'#9a9a9a';G.fill();G.lineWidth=1;G.strokeStyle='#000';G.stroke();
+      e.gl.forEach((ch,j)=>keyGlyph(G,l+w/2+(j-(e.gl.length-1)/2)*11,y,ch,e.on))})}});
   const bx=stBox();
   if(bx){const xl=X(bx.t0)-PAD,xr=X(bx.t1)+PAD,y0=RUL+bx.i0*RH-sy,y1=RUL+(bx.i1+1)*RH-sy,hot=ed&&ed.t=='st';
     G.save();G.beginPath();G.rect(0,RUL,w,h-RUL);G.clip();
@@ -567,7 +720,7 @@ function tlDraw(){
 const setX=x=>setTime(T(x));
 function marq(){
   const x0=Math.min(ed.x0,ed.x1),x1=Math.max(ed.x0,ed.x1),y0=Math.min(ed.y0,ed.y1),y1=Math.max(ed.y0,ed.y1),s=new Set(ed.base);
-  R.forEach((r,i)=>{if(!r.tr)return;const y=RUL+i*RH-sy;if(y+RH<y0||y>y1)return;r.tr.keys.forEach(k=>{const x=X(k.t);if(x>=x0&&x<=x1)s.add(k)})});
+  R.forEach((r,i)=>{const y=RUL+i*RH-sy;if(y+RH<y0||y>y1)return;const ks=r.tr?r.tr.keys:r.trs?r.trs.flatMap(t=>t.keys):[];ks.forEach(k=>{const x=X(k.t);if(x>=x0&&x<=x1)s.add(k)})});
   ksel=s}
 tcv.addEventListener('mousedown',e=>{
   const m=mp(e),c=cc();
@@ -580,6 +733,12 @@ tcv.addEventListener('mousedown',e=>{
     const tm_=trs.map(tr=>{const ks=tr.keys.filter(k=>ksel.has(k)).sort((a,b)=>a.t-b.t);return{ks,m:ks.map(k=>k.i)}});
     ed={t:'st',piv,edge,orig,trs,tm:tm_,s:1,moved:false,grab:m.x-X(edge),mx:m.x,my:m.y};
     tcv.style.cursor='ew-resize';tlDraw();return}
+  const gh=grpHit(m.x,m.y);
+  if(gh){
+    const all=gh.keys.every(k=>ksel.has(k));
+    if(e.shiftKey||e.ctrlKey){gh.keys.forEach(k=>all?ksel.delete(k):ksel.add(k))}else if(!all)ksel=new Set(gh.keys);
+    if(gh.keys.some(k=>ksel.has(k))){const trs=c.tracks.filter(t=>t.keys.some(k=>ksel.has(k)));ed={t:'kd',x0:m.x,orig:[...ksel].map(k=>[k,k.t]),trs,moved:false}}
+    tlDraw();return}
   const h=keyHit(m.x,m.y);
   if(h){
     if(e.shiftKey||e.ctrlKey){ksel.has(h.k)?ksel.delete(h.k):ksel.add(h.k)}else if(!ksel.has(h.k))ksel=new Set([h.k]);
@@ -664,7 +823,7 @@ function putSprites(o,ids,t0){
   if(o.grad||o.text)return flash('Спрайты можно вставлять только в объект с Image');
   const made=!o.img;if(made)o.img=newImg();
   let tr=c.tracks.find(t=>t.o==o.id&&t.k=='sprite');
-  if(!tr){tr={o:o.id,k:'sprite',keys:[]};c.tracks.push(tr)}
+  if(!tr){tr={o:o.id,k:'sprite',keys:[]};(c.tracks.push(tr),tcol.delete(tr.o))}
   const st=stepF(),dt=st/c.fps,ks=[];t0=snapT(clamp(t0,0,MAXT),c);
   ids.forEach((id,i)=>ks.push(setKey(tr,t0+i*dt,id)));
   if(ids.length>1)ks.push(setKey(tr,Math.round((t0+ids.length*dt)*1e4)/1e4,ids[ids.length-1]));   // закрывающий ключ: последний спрайт держится один шаг (длина клипа = последний ключ)
@@ -722,10 +881,11 @@ new ResizeObserver(()=>{if(window.amode=='clip'){sy=clamp(sy,0,maxSy());listScro
 function createClip(){const c=newClip();addClipState(c);if(window.amode=='clip')selectClip(c.id);return c}
 function openClip(id){if(!clip(id))return;cur=id;const k=CTS.find(k=>ctlClips(k).includes(id));if(k&&k!==C){if(pl)stopPlay();C=k;sl=null}
   if(window.amode=='clip')selectClip(id,true);else{keepCur=true;setTab('clip')}}
-function removeClip(id){const c=clip(id);if(!c)return;CTS.forEach(k=>k.st.forEach(s=>{if(s.clip==c.id)s.clip=null}));
+const goneC=new Set(),goneK=new Set();   // что пользователь удалил сам (Undo/Redo не должен это воскрешать/сохранять)
+function removeClip(id){const c=clip(id);if(!c)return;goneC.add(id);CTS.forEach(k=>k.st.forEach(s=>{if(s.clip==c.id)s.clip=null}));
   CL.splice(CL.indexOf(c),1);if(cur==id){pvStop();cur=CL.length?CL[0].id:null;if(window.amode=='clip')selectClip(cur);else{ksel=new Set();tsel=new Set()}}
   if(window.amode=='anim'){dr();ins_()}}
-function removeCtl(id){if(CTS.length<2)return false;const k=CTS.find(c=>c.id==id);if(!k)return false;if(pl)stopPlay();
+function removeCtl(id){if(CTS.length<2)return false;const k=CTS.find(c=>c.id==id);if(!k)return false;goneK.add(id);if(pl)stopPlay();
   CTS.splice(CTS.indexOf(k),1);if(C===k){C=CTS[0];sl=null}if(window.amode=='anim'){rp();dr();ins_()}return true}
 // сериализация (проект на диске и Undo/Redo)
 const jc=o=>JSON.parse(JSON.stringify(o));
@@ -746,9 +906,15 @@ window.AnimIO={
     sl=null;link=null;dg=null;ksel=new Set();tsel=new Set();ed=null;dz=null;
     cur=CL.some(c=>c.id==d.cur)?d.cur:(CL.length?CL[0].id:null);reloadUI()},
   reset(){this.load({clips:[],ctls:[],n:{},cur:null,curCtl:null})},
+  // Undo/Redo: клипы и контроллеры (файлы анимаций) не пропадают от Ctrl+Z — те, что есть сейчас, но отсутствуют в снимке, дописываются в него
+  // (кроме удалённых пользователем намеренно). Ключи внутри клипов откатываются как обычно. Возвращает число сохранённых.
+  keep(a){if(!a)return 0;a.clips=a.clips||[];a.ctls=a.ctls||[];let n=0;
+    CL.forEach(c=>{if(!goneC.has(c.id)&&!a.clips.some(x=>x.id==c.id)){a.clips.push(jc(c));n++}});
+    CTS.forEach(k=>{if(!goneK.has(k.id)&&!a.ctls.some(x=>x.id==k.id)){const q=jc(k);q.pa.forEach(p=>{if(p.type=='Trigger')p.val=false});a.ctls.push(q);n++}});
+    return n},
   stop(){if(pl)stopPlay();pvStop()}};
 window.animData={get C(){return C},CTS,CL};   // доступ к данным аниматора (контроллеры + клипы)
 window.setTab=setTab;window.animSync=syncIns;
-window.AnimRT={ctls:CTS,clips:CL,base,newCtl,ctlOf:id=>CTS.find(k=>k.id==id),openCtl:useCtl,mk:rtMake,tick:rtTick,play:rtPlay,set:rtSet,restore:restoreAll,createClip,openClip,removeClip,removeCtl};
+window.AnimRT={ensureCtl,syncCtl,dupCtl,ctlOwner,ctls:CTS,clips:CL,base,newCtl,ctlOf:id=>CTS.find(k=>k.id==id),openCtl:useCtl,mk:rtMake,tick:rtTick,play:rtPlay,set:rtSet,restore:restoreAll,createClip,openClip,removeClip,removeCtl};
 rp();tbar();
 })();

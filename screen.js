@@ -9,6 +9,7 @@ const outSize=S=>[Math.round(S.w*(S.k||1)),Math.round(S.h*(S.k||1))];
 const PRE=[['480x270','480 × 270 (16:9)'],['640x360','640 × 360 (16:9)'],['1280x720','1280 × 720 (HD)'],['512x512','512 × 512'],['256x256','256 × 256'],['128x128','128 × 128']];
 const row=(l,c)=>`<div class="r"><span class="l">${l}</span>${c}</div>`;
 function scrHtml(o){const S=o.screen,[ow,oh]=outSize(S);
+  if(S.kind=='js'&&window.jsScrHtml)return jsScrHtml(o);
   return`<div class="sec"><div class="sh">Screen<button data-crm="screen" title="Remove Component">✕</button></div>
 ${row('Preset',`<select data-scr="pre" style="flex:1;max-width:none"><option value="">Custom</option>${PRE.map(([v,t])=>`<option value="${v}" ${v==S.w+'x'+S.h?'selected':''}>${t}</option>`).join('')}</select>`)}
 ${row('Width',`<input type="number" min="16" max="2000" step="1" data-scr="w" value="${S.w}">`)}
@@ -19,7 +20,7 @@ ${row('GIF scale',`<select data-scr="k" style="flex:1;max-width:none">${[.25,.5,
 <div class="e" style="padding:2px 0;color:#888">Размер области в пикселях (1 юнит = 100 px). Позиция — из Transform; Scale и Rotation на область не влияют. GIF умеет прозрачность, MP4 — нет (фон = Background).</div></div>`}
 const _ch=window.compHtml,_cm=window.compMenu;
 window.compHtml=o=>(o.screen?scrHtml(o):'')+(_ch?_ch(o):'');
-window.compMenu=o=>{if(o.screen)return[];const it=_cm?_cm(o):[];if(!o.img&&!o.text&&!o.grad)it.unshift(['Screen',()=>{o.screen=mkScreen();refresh()}]);return it};
+window.compMenu=o=>{if(o.screen)return[];const it=_cm?_cm(o):[];if(!o.img&&!o.text&&!o.grad)it.unshift(['Screen (GIF)',()=>{o.screen=mkScreen();refresh()}]);return it};
 ins.addEventListener('input',e=>{const t=e.target,k=t.dataset.scr,o=get(sel);if(k===undefined||!o||!o.screen)return;const S=o.screen;
   if(k=='pre'){if(!t.value)return;[S.w,S.h]=t.value.split('x').map(Number);inspect()}
   else if(k=='transp'){S.transp=t.checked;inspect()}
@@ -40,8 +41,9 @@ window.drawScreens=(g,W,H,cam,clean)=>{if(window.expMode||clean)return;
       for(let yy=Math.floor((ya-Y)/c);Y+yy*c<yb;yy++)for(let xx=Math.floor((xa-X)/c);X+xx*c<xb;xx++){g.fillStyle=(xx+yy)&1?'#6a6a6a':'#8a8a8a';g.fillRect(X+xx*c,Y+yy*c,c,c)}}
     else{g.fillStyle=S.bg;g.fillRect(X,Y,w,h)}
     g.restore();
-    g.strokeStyle=o.id==sel?'#ffd24a':'#4fb3ff';g.lineWidth=2;g.setLineDash([8,5]);g.strokeRect(X,Y,w,h);g.setLineDash([]);
-    g.fillStyle=g.strokeStyle;g.font='11px Segoe UI,sans-serif';g.textBaseline='bottom';g.textAlign='left';g.fillText(`${o.name}  ${S.w}×${S.h}${S.transp?' · transparent':''}`,X,Y-4)}};
+    const js=S.kind=='js';g.strokeStyle=o.id==sel?'#ffd24a':js?'#3ddc84':'#4fb3ff';g.lineWidth=2;g.setLineDash([8,5]);g.strokeRect(X,Y,w,h);g.setLineDash([]);
+    if(js&&window.jsScrDraw)jsScrDraw(g,o,X,Y,w,h,cam);
+    g.fillStyle=g.strokeStyle;g.font='11px Segoe UI,sans-serif';g.textBaseline='bottom';g.textAlign='left';g.fillText(js?`${o.name}  JS · ${S.w}×${S.h} · ${S.mode||'height'}`:`${o.name}  ${S.w}×${S.h}${S.transp?' · transparent':''}`,X,Y-4)}};
 
 /* ---------- GIF: квантование (median cut, 15 бит) ---------- */
 function quant(d,n,tr){

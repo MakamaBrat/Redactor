@@ -3,7 +3,7 @@
 const $=s=>document.querySelector(s);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 let folders=[{id:0,name:'Assets',parent:null}],fid=1,cur=0,psel=new Set(),anchor=null,
-    tOpen=new Set([0]),subOpen=new Set(),zoom=64,query='',dragKeys=null,E=null;
+    tOpen=new Set([0]),subOpen=new Set(),zoom=96,query='',dragKeys=null,E=null;
 window.pfocus=false;
 const kind=k=>k[0];   // f — папка, a — ассет/спрайт, c — анимация (клип), k — Animator Controller
 const animFolder=()=>folders.find(f=>f.sys=='anim');
@@ -86,6 +86,7 @@ function projRender(){
   const its=items();
   $('#pgrid').innerHTML=its.map(tile).join('')||'<div class="e">Пусто. ПКМ — создать папку; перетащите сюда картинки или папки с компьютера.</div>';
   window.projSelChanged&&projSelChanged();
+  window.projFit&&projFit();
 }
 // выбранные спрайты в порядке показа в Project (атлас с нарезкой раскрывается во все свои спрайты) — для окна Sprites в Animation
 window.projSprites=()=>{const out=[],seen=new Set(),add=id=>{if(!seen.has(id)){seen.add(id);out.push(id)}};
@@ -197,7 +198,7 @@ $('#ptree').addEventListener('contextmenu',e=>{
 
 // ---------- клавиатура ----------
 addEventListener('keydown',e=>{
-  if(!window.pfocus||E||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
+  if(window.hoverWin!=='proj'||E||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
   const ks=[...psel];
   if(e.key=='F2'&&ks.length==1){e.preventDefault();rename(ks[0])}
   else if(e.key=='Delete'&&ks.length){e.preventDefault();delKeys(ks)}
@@ -250,7 +251,41 @@ function moveKeys(keys,T){
 
 // ---------- импорт ----------
 const readFile=f=>new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=()=>r(null);fr.readAsDataURL(f)});
+// ---------- v46: .zip можно закидывать в проект как есть (без ручной распаковки) ----------
+// картинки и шрифты из архива импортируются в новую папку с именем архива, структура папок внутри архива сохраняется
+const ZMIME={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',svg:'image/svg+xml',avif:'image/avif'};
+const zext=n=>n.split('.').pop().toLowerCase();
+async function inflateRaw(u8){const ds=new DecompressionStream('deflate-raw'),w=ds.writable.getWriter();w.write(u8);w.close();return new Uint8Array(await new Response(ds.readable).arrayBuffer())}
+async function readZip(file){
+  const buf=new Uint8Array(await file.arrayBuffer()),dv=new DataView(buf.buffer,buf.byteOffset,buf.byteLength);
+  let e=buf.length-22;const min=Math.max(0,buf.length-65557);
+  while(e>=min&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<min)throw new Error('not a zip');
+  const n=dv.getUint16(e+10,true),td=new TextDecoder('utf-8'),ents=[];let p=dv.getUint32(e+16,true);
+  for(let i=0;i<n;i++){
+    if(p+46>buf.length||dv.getUint32(p,true)!==0x02014b50)break;
+    const flag=dv.getUint16(p+8,true),method=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+    ents.push({name:td.decode(buf.subarray(p+46,p+46+nl)).replace(/\\/g,'/'),method,csz,lo,enc:flag&1});
+    p+=46+nl+el+cl}
+  return{buf,dv,ents}}
+async function zipData(z,en){
+  if(en.csz==0xFFFFFFFF||en.lo==0xFFFFFFFF||z.dv.getUint32(en.lo,true)!==0x04034b50)return null;
+  const nl=z.dv.getUint16(en.lo+26,true),el=z.dv.getUint16(en.lo+28,true),st=en.lo+30+nl+el,raw=z.buf.subarray(st,st+en.csz);
+  return en.method==0?raw:en.method==8?await inflateRaw(raw):null}
+async function importZip(f,folder){
+  let z;try{z=await readZip(f)}catch(e){return null}
+  const parts=en=>en.name.split('/').filter(Boolean);
+  const items=z.ents.filter(en=>!en.name.endsWith('/')&&!en.enc&&!/(^|\/)(__MACOSX|\.[^/]*)(\/|$)/.test(en.name)&&(ZMIME[zext(en.name)]||isFontFile(en.name))).sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true}));
+  if(!items.length)return null;
+  const tops=new Set(items.map(en=>parts(en)[0])),single=tops.size==1&&items.every(en=>parts(en).length>1);   // всё лежит в одной папке архива — она и становится корнем
+  const root=mkFolder(single?[...tops][0]:f.name.replace(/\.zip$/i,''),folder),dirs=new Map();
+  const dirOf=segs=>{let id=root.id,key='';for(const sg of segs){key+='/'+sg;if(!dirs.has(key))dirs.set(key,mkFolder(sg,id).id);id=dirs.get(key)}return id};
+  for(const en of items){
+    try{const segs=parts(en);if(single)segs.shift();const name=segs.pop(),data=await zipData(z,en);if(!data||!name)continue;
+      await importOne(new File([data],name,{type:ZMIME[zext(name)]||''}),dirOf(segs),false)}catch(e){}}
+  tOpen.add(folder);tOpen.add(root.id);psel=new Set([kf(root.id)]);anchor=kf(root.id);projRender();return null}
 async function importOne(f,folder,route){
+  if(/\.zip$/i.test(f.name||''))return importZip(f,folder);
   if(isFontFile(f.name)){const F=fontsFolder();if(route&&F&&!inFonts(folder))folder=F.id;const url=await readFile(f);return url?mkFont(f.name.replace(/\.\w+$/,''),url,folder,f.name.split('.').pop()):null}
   if(!f.type.startsWith('image/'))return null;
   const url=await readFile(f);return url?mkAsset(f.name.replace(/\.\w+$/,''),url,folder):null}
@@ -273,8 +308,42 @@ async function importDrop(dt,target){
 $('#imp').onclick=()=>$('#file').click();
 $('#file').onchange=async e=>{await importFiles(e.target.files);e.target.value='';touch()};
 $('#psearch').oninput=e=>{query=e.target.value;psel=new Set();projRender()};
-$('#pzoom').oninput=e=>{zoom=+e.target.value;$('#proj').style.setProperty('--ts',zoom+'px')};
+$('#pzoom').oninput=e=>{zoom=+e.target.value;$('#proj').style.setProperty('--ts',zoom+'px');window.projFit&&projFit()};
 split('#s4',e=>{const r=body.getBoundingClientRect();body.style.setProperty('--tw',clamp(e.clientX-r.left,100,r.width-200)+'px')});
+
+
+// ---------- размер строк Hierarchy (маленький регулятор в шапке) ----------
+{const r=$('#hsz'),p=$('#p1');let v=100;try{v=+localStorage.getItem('hsz')||100}catch(e){}
+ const ap=()=>{r.value=v;p.style.setProperty('--hs',v/100);try{localStorage.setItem('hsz',v)}catch(e){}};
+ r.oninput=e=>{v=+e.target.value;ap()};r.ondblclick=()=>{v=100;ap()};ap()}
+
+// ---------- высота панели Project в Animation ----------
+// в режиме Animation панель выезжает ровно настолько, чтобы были видны ресурсы: 1 ряд — по высоте одного ряда, 2 и больше — двух рядов.
+// Размер всё равно можно менять вручную (тянуть разделитель); двойной клик по разделителю — снова подогнать по содержимому.
+{const A=$('#app'),P=$('#proj'),G=$('#pgrid'),anm=$('#anm');
+ let manual=false,was=false,saved='',mine='';
+ const inAnim=()=>window.amode=='clip'||getComputedStyle(anm).display!='none';
+ const want=()=>{const T=[...G.querySelectorAll('.tile')],th=T.length?T[0].offsetHeight:zoom+40,tw=T.length?T[0].offsetWidth:zoom+10,
+   w=$('#pmain').clientWidth-24,per=Math.max(1,Math.floor((w+10)/(tw+10))),   // сколько плиток влезает в ряд (считаем по ширине, а не по текущему переносу)
+   rows=T.length?Math.min(2,Math.max(1,Math.ceil(T.length/per))):1,
+   head=P.querySelector('.ph').offsetHeight+$('#pcrumb').offsetHeight+2;
+   return head+24+rows*th+(rows-1)*10+4};
+ window.projFit=force=>{if(!inAnim()||(manual&&force!==true))return;
+   const H=A.getBoundingClientRect().height,h=clamp(Math.round(want()),90,Math.max(90,H-150))+'px';
+   if(A.style.getPropertyValue('--bh')!=h)A.style.setProperty('--bh',mine=h)};
+ const sync=()=>{const on=inAnim();
+   if(on&&!was){saved=A.style.getPropertyValue('--bh');manual=false;projFit()}
+   else if(!on&&was){if(saved)A.style.setProperty('--bh',saved);else A.style.removeProperty('--bh')}
+   was=on;if(on)projFit()};
+ new MutationObserver(sync).observe(anm,{attributes:true,attributeFilter:['style','class']});
+ new MutationObserver(()=>{if(inAnim()&&!manual&&A.style.getPropertyValue('--bh')!=mine)projFit()}).observe(A,{attributes:true,attributeFilter:['style']});   // если кто-то другой сменил высоту — вернуть подгонку
+ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.tb'))setTimeout(sync,0)},true);
+ $('#s3').addEventListener('mousedown',()=>{if(inAnim())manual=true});
+ $('#s3').addEventListener('dblclick',()=>{manual=false;projFit(true)});
+ new ResizeObserver(()=>projFit()).observe(G);
+ addEventListener('resize',()=>projFit());
+ setInterval(sync,300);   // страховка: режим Animation мог включиться способом, который не видно по DOM
+ sync()}
 
 // ---------- инспектор ассетов ----------
 window.assetInspect=()=>{
@@ -332,6 +401,22 @@ window.assetInspect=()=>{
 <div class="r"><span class="l">Sprites</span><span class="kv">${a.sprites.length}</span></div>
 <div style="text-align:center;margin-top:8px"><button data-pa="edit">Sprite Editor</button></div></div>${prev}`;
   return true};
+// ---------- v41: «двойной» инспектор ----------
+// Когда выбран ассет в Project, а на сцене есть выбранный объект — Inspector делится пополам:
+// сверху ассет, ВНИЗУ (ближе к окну Project) — прежний объект, у которого можно перетащить спрайт в Source Image.
+{const orig=window.assetInspect;
+window.assetInspect=()=>{
+  const box=$('#ins');
+  if(!orig())return false;
+  const o=get(sel);
+  if(!o||window.amode=='anim')return true;
+  const assetHtml=box.innerHTML,pf=window.pfocus;
+  window.pfocus=false;                 // временно: inspect() соберёт разметку ОБЪЕКТА
+  try{inspect()}finally{window.pfocus=pf}
+  const objHtml=box.innerHTML;
+  box.classList.add('sp2');
+  box.innerHTML=`<div class="isplit"><div class="ipa">${assetHtml}</div><div class="ipo"><div class="ipt"><span>◆ ${esc(o.name)}</span><small>${o.img?'перетащите спрайт из Project в Source Image':'выбранный объект'}</small></div>${objHtml}</div></div>`;
+  return true}}
 const insEl=$('#ins');
 insEl.addEventListener('change',e=>{
   const t=e.target,act=t.dataset.pa;if(!act||!window.pfocus||psel.size!=1)return;

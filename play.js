@@ -3,6 +3,7 @@
 const $=s=>document.querySelector(s),ins=$('#ins'),scn=$('#scn'),RT=()=>window.AnimRT;
 let run=null;window.playing=false;
 const mkBtn=()=>({interactable:true,trans:'sprite',hi:null,pr:null,dis:null,tint:{hi:'#f5f5f5',pr:'#c8c8c8',dis:'#c8c8c8'},onClick:[]});
+window.mkBtn=mkBtn;
 const spLabel=v=>{const a=v!=null&&ast(v);return a?esc(spName(a)):'None (Sprite)'};
 
 /* ---------- методы, которые можно повесить на событие ---------- */
@@ -33,6 +34,8 @@ const MTH=[
  {k:'an.bool',g:'Animator',n:'SetBool(name, value)',if:o=>!!o.animator,a:[{t:'param',pt:'Bool',l:'Bool'},{t:'bool',l:'Value',d:true}],run:(o,a)=>{const p=player(o);if(p&&a[0])RT().set(p,a[0],!!a[1])}},
  {k:'an.float',g:'Animator',n:'SetFloat(name, value)',if:o=>!!o.animator,a:[{t:'param',pt:'Float',l:'Float'},NUM('Value')],run:(o,a)=>{const p=player(o);if(p&&a[0])RT().set(p,a[0],a[1])}},
  {k:'an.int',g:'Animator',n:'SetInteger(name, value)',if:o=>!!o.animator,a:[{t:'param',pt:'Int',l:'Int'},NUM('Value',0,1)],run:(o,a)=>{const p=player(o);if(p&&a[0])RT().set(p,a[0],a[1])}},
+ {k:'mc.open',g:'MenuController',n:'Open(index)',if:o=>!!o.menu,a:[NUM('Index',0,1)],run:(o,a)=>window.MenuCtl&&MenuCtl.open(o,+a[0]||0)},
+ {k:'mc.close',g:'MenuController',n:'Close All()',if:o=>!!o.menu,a:[],run:o=>window.MenuCtl&&MenuCtl.close(o)},
  {k:'btn.inter',g:'Button',n:'Set Interactable(bool)',if:o=>!!o.btn,a:[{t:'bool',l:'Interactable',d:true}],run:(o,a)=>{o.btn.interactable=!!a[0]}}
 ];
 const MD={};MTH.forEach(m=>MD[m.k]=m);
@@ -71,12 +74,12 @@ ${b.onClick.map(evHtml).join('')||'<div class="e" style="padding:2px 0">List is 
 function animHtml(o){
   const A=o.animator;
   return`<div class="sec"><div class="sh">Animator<button data-crm="animator" title="Remove Component">✕</button></div>
-<div class="r"><span class="l">Controller</span><select class="wide" data-ctl>${RT().ctls.map(k=>`<option value="${k.id}" ${k.id==A.ctl?'selected':''}>${esc(k.name)}</option>`).join('')}<option value="__new">＋ New Controller…</option></select></div>
-<div class="r"><button data-aopen>Open in Animator</button></div></div>`}
+<div class="r"><span class="l">Controller</span><span class="wide" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Контроллер объекта: имя берётся из имени объекта. Если у копии объекта он общий — правки анимаций видны всем, кто им пользуется">${esc((RT().ctlOf(A.ctl)||{name:o.name}).name)}${objs.filter(x=>x.animator&&x.animator.ctl==A.ctl).length>1?` <span style=\"color:#e0b040\">· shared ×${objs.filter(x=>x.animator&&x.animator.ctl==A.ctl).length}</span>`:''}</span></div>
+<div class="r"><button data-aopen>Open in Animator</button><button data-adup title="Сделать для этого объекта свой контроллер: копия контроллера и всех его анимаций, правки пойдут только сюда">Duplicate as new controller</button></div></div>`}
 window.compHtml=o=>(o.btn?btnHtml(o):'')+(o.animator?animHtml(o):'');
 window.compMenu=o=>{const it=[];
   if(!o.btn)it.push(['UI / Button',()=>{if(!o.img&&!o.text&&!o.grad)o.img=newImg();o.btn=mkBtn();refresh()}]);
-  if(!o.animator)it.push(['Animator',()=>{o.animator={ctl:RT().ctls[0].id};refresh()}]);
+  if(!o.animator)it.push(['Animator',()=>{RT().ensureCtl(o);refresh()}]);
   return it};
 
 /* ---------- события Inspector ---------- */
@@ -100,6 +103,7 @@ ins.addEventListener('click',e=>{
   const t=e.target,d=t.dataset,o=get(sel);if(!o)return;
   if(d.crm){delete o[d.crm];refresh();return}
   if(d.aopen!==undefined&&o.animator){RT().openCtl(o.animator.ctl);window.setTab('anim');return}
+  if(d.adup!==undefined&&o.animator){RT().dupCtl(o);refresh();return}
   if(!o.btn)return;
   if(d.eadd!==undefined){o.btn.onClick.push({t:null,m:'',a:[]});inspect();return}
   if(d.edel!==undefined){o.btn.onClick.splice(+d.edel,1);inspect();return}
@@ -129,10 +133,11 @@ ins.addEventListener('drop',e=>{const t=e.target,o=get(sel);if(!isOt(t)||!o||!o.
 ins.addEventListener('click',e=>{const t=e.target,d=t.dataset,o=get(sel);if(!o||!o.btn)return;
   if(d.ot!==undefined){const r=t.getBoundingClientRect(),i=+d.ot;
     showMenu(r.left,r.bottom,[['None (Object)',()=>setTarget(o,i,null)],...objs.map(x=>[x.name,()=>setTarget(o,i,x.id)])])}
-  else if(d.opick!==undefined){pickObj={oid:o.id,i:+d.opick};document.body.style.cursor='crosshair';
+  else if(d.opick!==undefined){pickObj={oid:o.id,i:+d.opick};window.dragMark&&dragMark('obj');document.body.style.cursor='crosshair';
     $('#hint').textContent='Кликните по объекту на сцене или в Hierarchy · Esc — отмена'}});
 let pickObj=null,refDrag=null,hintOld='';
-const endPick=()=>{if(pickObj){pickObj=null;document.body.style.cursor='';if(window.amode&&HINTS())$('#hint').textContent=HINTS()}};
+const endPick=()=>{if(pickObj){pickObj=null;window.dragMark&&dragMark(null);document.body.style.cursor='';if(window.amode&&HINTS())$('#hint').textContent=HINTS()}};
+window.pickRef=cb=>{pickObj={cb};window.dragMark&&dragMark('obj');document.body.style.cursor='crosshair';$('#hint').textContent='Кликните по объекту на сцене или в Hierarchy · Esc — отмена'};
 const HINTS=()=>({scene:'ПКМ — создать · колесо — зум · СКМ/Alt — пан · Shift при масштабе — пропорции'})[window.amode||'scene']||'';
 document.addEventListener('mousedown',e=>{
   if(window.playing||e.button)return;const cvEl=$('#cv');
@@ -140,22 +145,24 @@ document.addEventListener('mousedown',e=>{
     let id=null;if(e.target===cvEl){const h=hit(toW(e));id=h?h.id:null}
     else{const it=e.target.closest&&e.target.closest('#hier .it');if(it)id=+it.dataset.id}
     const pk=pickObj;endPick();
-    if(id!=null){e.stopPropagation();e.preventDefault();setTarget(get(pk.oid),pk.i,id)}return}
+    if(id!=null){e.stopPropagation();e.preventDefault();pk.cb?pk.cb(id):setTarget(get(pk.oid),pk.i,id)}return}
   // Shift+перетаскивание объекта со сцены в поле Inspector (объект не двигается и выделение не меняется)
-  const s=get(sel);if(e.target!==cvEl||!e.shiftKey||e.altKey||!s||!s.btn)return;
+  const s=get(sel);if(e.target!==cvEl||!e.shiftKey||e.altKey||!s||!(s.btn||s.menu))return;
   if(window.gizOver&&gizOver(e)>=0)return;
   const h=hit(toW(e));if(!h)return;e.stopPropagation();e.preventDefault();
   const chip=document.createElement('div');chip.textContent='⇢ '+h.name;
   chip.style.cssText='position:fixed;z-index:50;pointer-events:none;background:#2c5d87;color:#fff;padding:2px 8px;border-radius:3px;border:1px solid #111;box-shadow:0 2px 8px #000a';
-  document.body.append(chip);refDrag={id:h.id,chip};document.body.style.cursor='copy';mvRef(e)},true);
+  document.body.append(chip);refDrag={id:h.id,chip};window.dragMark&&dragMark('obj');document.body.style.cursor='copy';mvRef(e)},true);
 function mvRef(e){if(!refDrag)return;refDrag.chip.style.left=e.clientX+12+'px';refDrag.chip.style.top=e.clientY+10+'px';
-  ins.querySelectorAll('[data-ot].o').forEach(x=>x.classList.remove('o'));
-  const el=document.elementFromPoint(e.clientX,e.clientY),sl=el&&el.closest&&el.closest('[data-ot]');if(sl)sl.classList.add('o')}
+  ins.querySelectorAll('[data-ot].o,[data-mo].o').forEach(x=>x.classList.remove('o'));
+  const el=document.elementFromPoint(e.clientX,e.clientY),sl=el&&el.closest&&el.closest('[data-ot],[data-mo]');if(sl)sl.classList.add('o')}
 addEventListener('mousemove',mvRef);
-addEventListener('mouseup',e=>{if(!refDrag)return;const r=refDrag;refDrag=null;r.chip.remove();document.body.style.cursor='';
-  ins.querySelectorAll('[data-ot].o').forEach(x=>x.classList.remove('o'));
-  const el=document.elementFromPoint(e.clientX,e.clientY),sl=el&&el.closest&&el.closest('[data-ot]'),o=get(sel);
-  if(sl&&o&&o.btn)setTarget(o,+sl.dataset.ot,r.id)},true);
+addEventListener('mouseup',e=>{if(!refDrag)return;const r=refDrag;refDrag=null;window.dragMark&&dragMark(null);r.chip.remove();document.body.style.cursor='';
+  ins.querySelectorAll('[data-ot].o,[data-mo].o').forEach(x=>x.classList.remove('o'));
+  const el=document.elementFromPoint(e.clientX,e.clientY),sl=el&&el.closest&&el.closest('[data-ot],[data-mo]'),o=get(sel);
+  if(!sl||!o)return;
+  if(sl.dataset.mo!==undefined){if(o.menu&&window.menuSet)menuSet(o,sl.dataset.mo,r.id)}
+  else if(o.btn)setTarget(o,+sl.dataset.ot,r.id)},true);
 addEventListener('keydown',e=>{if(e.key=='Escape'&&pickObj){e.preventDefault();endPick()}});
 
 /* ---------- Play ---------- */
@@ -170,7 +177,7 @@ window.btnView=o=>{
 function exec(E){
   const t=get(E.t),m=MD[E.m];if(!t||!m||(m.if&&!m.if(t)))return;
   try{m.run(t,E.a||[])}catch(err){console.warn('OnClick:',err)}}
-const fire=o=>{if(run&&run.paused)return;if(!o.btn||o.btn.interactable===false)return;(o.btn.onClick||[]).slice().forEach(exec)};
+const fire=o=>{if(run&&run.paused)return;if(!o.btn||o.btn.interactable===false)return;(o.btn.onClick||[]).slice().forEach(exec);window.MenuCtl&&MenuCtl.click(o)};
 function rayHit(w){
   const L=order();
   for(let i=L.length-1;i>=0;i--){const{o,on,M}=L[i];if(!on||!(o.img||o.text||o.grad))continue;
@@ -223,5 +230,5 @@ addEventListener('keydown',e=>{
   if(e.ctrlKey&&e.code=='KeyP'){e.preventDefault();window.playing?stop():start()}
   else if(e.key=='Escape'&&window.playing&&!(sp&&sp.style.display!='none')){e.preventDefault();stop()}});
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.tb');if(window.playing&&b&&b.dataset.tab!='scene')stop()},true);
-window.playMode={start,stop,pause,fire,exec,editObjs:()=>run?run.snap.objs:null,isPaused:()=>!!(run&&run.paused)};
+window.playMode={start,stop,pause,fire,exec,pl:()=>run?run.pl:null,editObjs:()=>run?run.snap.objs:null,isPaused:()=>!!(run&&run.paused)};
 })();

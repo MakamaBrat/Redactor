@@ -48,8 +48,9 @@ function check(force){
   if(sg!==stack[idx]){stack.length=idx+1;stack.push(sg);let sz=0;for(const q of stack)sz+=q.length;while(stack.length>20&&(stack.length>200||sz>60e6)){sz-=stack.shift().length}idx=stack.length-1}
   setDirty(sg!==savedSig)}
 function apply(sg){
-  const d=JSON.parse(sg);restoring=true;
+  const d=JSON.parse(sg);restoring=true;let kept=0;
   try{
+    kept=AnimIO.keep(d.anim);                    // файлы анимаций (клипы/контроллеры) Ctrl+Z не удаляет
     AnimIO.stop();AnimRT.restore();
     const old=sel;
     objs=d.objs;
@@ -59,6 +60,7 @@ function apply(sg){
     sel=objs.some(o=>o.id==old)?old:null;
     refresh();ProjIO.rerender();
   }finally{restoring=false}
+  if(kept){sg=sigOf(collect());stack[idx]=sg}   // снимок теперь включает сохранённые клипы — иначе следующая проверка оборвёт цепочку Redo
   setDirty(sg!==savedSig)}
 function undo(){
   if(!P||window.playing)return;check(true);

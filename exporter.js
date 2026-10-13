@@ -94,7 +94,7 @@ function build(o){
     files.push({rel:file,b64});
     return font?{id:a.id,name:a.name,font:1,file}:{id:a.id,name:a.name,file,ppu:a.ppu,mode:a.mode,sprites:a.sprites}}).filter(Boolean);
   const game={format:'unity2d-web',version:1,title:o.title,
-    view:{x:o.x,y:o.y,w:o.w,h:o.h,mode:o.mode,bg:o.bg,bgOuter:o.bgOuter},
+    view:Object.assign({x:o.x,y:o.y,w:o.w,h:o.h,mode:o.mode,bg:o.bg,bgOuter:o.bgOuter},o.extra||{}),
     objects:S.objs,assets:meta,clips:S.anim.clips,ctls:S.anim.ctls};
   const out=[
     {rel:'index.html',text:pageHtml(o.title,o.bgOuter)},
@@ -109,17 +109,19 @@ function build(o){
 /* ---------- диалог ---------- */
 const row=(l,c,tip)=>`<div class="r"><span class="l" ${tip?`title="${esc(tip)}"`:''}>${l}</span>${c}</div>`;
 const inp=(id,v,ex='')=>`<input type="number" id="ex-${id}" value="${v}" step="0.5" ${ex}>`;
-function open(){
+function open(preId){
   if(window.playing)playMode.stop();
   const info=Project.info||{name:'Game'},cv_=$('#cv'),z=cam.z||100;
   const vw=Math.round(cv_.clientWidth/z*10)/10,vh=Math.round(cv_.clientHeight/z*10)/10;
   const sep=info.dir&&info.dir.includes('\\')?'\\':'/',dir0=info.dir?info.dir.replace(/[\\/]+$/,'')+sep+'Build'+sep+'Web':'';
-  const d=$('#dlg');
+  const d=$('#dlg'),JS=window.jsScreens?jsScreens():[];
+  const jsDef=(JS.find(x=>x.id==preId)||JS.find(x=>x.id==sel&&x.active!==false)||JS.find(x=>x.active!==false)||{}).id;
   d.innerHTML=`<div class="dbox wide"><div class="dh">Export ▸ Web (Vercel)</div><div class="db">
+${JS.length?row('JS Screen',`<select id="ex-js" class="wide"><option value="">Manual — задать вручную</option>${JS.map(x=>`<option value="${x.id}" ${x.id==jsDef?'selected':''}>${esc(x.name)} · ${x.screen.w}×${x.screen.h} · ${x.screen.mode||'height'}</option>`).join('')}</select>`,'Область и режим масштабирования берутся из компонента JS Screen на сцене'):''}
 ${row('Title',`<input type="text" id="ex-title" value="${esc(info.name)}">`)}
 ${row('Camera X / Y',`${inp('x',rd(cam.x),'style="width:50%"')}${inp('y',rd(cam.y),'style="width:50%"')}`,'Центр кадра в игре (по умолчанию — текущий вид Scene)')}
 ${row('View W / H',`${inp('w',vw,'min="0.5" style="width:50%"')}${inp('h',vh,'min="0.5" style="width:50%"')}`,'Размер видимой области в единицах сцены')}
-${row('Scale mode',`<select id="ex-mode" class="wide"><option value="fit">Fit — вся область видна, поля по краям</option><option value="height" selected>Match Height — на широком экране видно больше по ширине</option><option value="width">Match Width — по ширине экрана</option></select>`)}
+${row('Scale mode',`<select id="ex-mode" class="wide"><option value="fit">Fit — вся область видна, поля по краям</option><option value="height" selected>Match Height — на широком экране видно больше по ширине</option><option value="width">Match Width — по ширине экрана</option><option value="expand">Expand — без полей, область видна целиком</option><option value="cover">Cover — заполняет экран, края обрезаются</option><option value="pixel">Pixel Perfect — целочисленный зум</option></select>`)}
 ${row('Background',`<input type="color" id="ex-bg" value="#2b2b2b">`,'Цвет сцены')}
 ${row('Letterbox',`<input type="color" id="ex-bgo" value="#000000">`,'Цвет полей (режим Fit) и страницы')}
 ${N()&&info.dir?row('Folder',`<input type="text" id="ex-dir" value="${esc(dir0)}"><button id="ex-br">Browse</button>`):''}
@@ -127,9 +129,15 @@ ${N()&&info.dir?row('Folder',`<input type="text" id="ex-dir" value="${esc(dir0)}
 <div class="df">${N()&&info.dir?'<button id="ex-go" class="pri">Export to folder</button>':''}<button id="ex-zip" ${N()&&info.dir?'':'class="pri"'}>Download .zip</button><button id="ex-no">Close</button></div></div>`;
   d.style.display='flex';
   const $$=id=>$('#ex-'+id),val=id=>parseFloat($$(id).value),close=()=>{d.style.display='none';d.innerHTML=''};
-  const opts=()=>({title:$$('title').value.trim()||info.name,x:val('x')||0,y:val('y')||0,w:Math.max(.5,val('w')||vw),h:Math.max(.5,val('h')||vh),mode:$$('mode').value,bg:$$('bg').value,bgOuter:$$('bgo').value});
+  const jsObj=()=>{const el=$$('js');return el&&el.value?JS.find(x=>x.id==el.value):null};
+  const opts=()=>{const j=jsObj(),r={title:$$('title').value.trim()||info.name,x:val('x')||0,y:val('y')||0,w:Math.max(.5,val('w')||vw),h:Math.max(.5,val('h')||vh),mode:$$('mode').value,bg:$$('bg').value,bgOuter:$$('bgo').value};
+    if(j){const v=jsScreenView(j);Object.assign(r,{x:v.x,y:v.y,w:v.w,h:v.h,mode:v.mode,bg:v.bg,bgOuter:v.bgOuter});r.extra={maxScale:v.maxScale,dpr:v.dpr,smooth:v.smooth,orient:v.orient,fs:v.fs}}
+    return r};
+  const syncJs=()=>{const j=jsObj();['x','y','w','h','mode','bg','bgo'].forEach(id=>{$$(id).disabled=!!j});
+    if(j){const v=jsScreenView(j);$$('x').value=v.x;$$('y').value=v.y;$$('w').value=rd(v.w);$$('h').value=rd(v.h);$$('mode').value=v.mode;$$('bg').value=v.bg;$$('bgo').value=v.bgOuter}
+    try{const r=build(opts());$$('info').textContent=(j?`JS Screen «${j.name}»: ${j.screen.w}×${j.screen.h} px. `:'')+`Файлов: ${r.files.length} · размер: ${fmtSize(r.bytes)}`}catch(e){err('Ошибка сборки: '+e.message)}};
   const err=m=>{$$('err').textContent=m||''};
-  try{const r=build(opts());$$('info').textContent=`Файлов: ${r.files.length} · размер: ${fmtSize(r.bytes)}`}catch(e){err('Ошибка сборки: '+e.message)}
+  if($$('js'))$$('js').onchange=syncJs;syncJs();
   $$('no').onclick=close;
   $$('zip').onclick=()=>{try{const o=opts(),r=build(o),nm=slug(o.title);
     const url=URL.createObjectURL(makeZip(r.files,nm)),a=document.createElement('a');a.href=url;a.download=nm+'-web.zip';document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
